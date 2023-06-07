@@ -40,10 +40,6 @@ namespace RustTurkiye_Responder
 
         private Task MessageReceived(SocketMessage message)
         {
-            Console.WriteLine(message.Channel.Id + " - " + message.Content);
-
-
-
             if (message.Channel.Id == _channelId)
             {
                 if (message.Author.Id != _client.CurrentUser.Id) // Botun kendi mesajlarını kontrol et
@@ -98,10 +94,6 @@ namespace RustTurkiye_Responder
                         return message.Channel.SendMessageAsync("", false, embedBuilder.Build());
                     }
                 }
-            }
-            else
-            {
-                Console.WriteLine("Not in message.");
             }
             return Task.CompletedTask;
         }
