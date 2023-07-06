@@ -47,20 +47,20 @@ namespace RustTurkiye_Responder
                     if (message.Content.ToLower().Contains("wipe") || message.Content.ToLower().Contains("güncelleme") || message.Content.ToLower().Contains("global"))
                     {
                         DateTime today = DateTime.Today;
-                        DateTime firstThursdayOfMonth = new DateTime(today.Year, today.Month, 1);
+                        DateTime firstDayOfMonth = new DateTime(today.Year, today.Month, 1);
 
-                        while (firstThursdayOfMonth.DayOfWeek != DayOfWeek.Thursday)
+                        while (firstDayOfMonth.DayOfWeek != DayOfWeek.Thursday)
                         {
-                            firstThursdayOfMonth = firstThursdayOfMonth.AddDays(1);
+                            firstDayOfMonth = firstDayOfMonth.AddDays(1);
                         }
 
-                        if (today > firstThursdayOfMonth)
+                        if (today > firstDayOfMonth || (today == firstDayOfMonth && DateTime.Now.TimeOfDay > firstDayOfMonth.TimeOfDay))
                         {
-                            firstThursdayOfMonth = firstThursdayOfMonth.AddMonths(1);
+                            firstDayOfMonth = firstDayOfMonth.AddMonths(1);
 
-                            while (firstThursdayOfMonth.DayOfWeek != DayOfWeek.Thursday)
+                            while (firstDayOfMonth.DayOfWeek != DayOfWeek.Thursday)
                             {
-                                firstThursdayOfMonth = firstThursdayOfMonth.AddDays(1);
+                                firstDayOfMonth = firstDayOfMonth.AddDays(-1);
                             }
                         }
 
@@ -70,14 +70,14 @@ namespace RustTurkiye_Responder
 
                         if (isDaylight)
                         {
-                            firstThursdayOfMonth = firstThursdayOfMonth.AddHours(21);
+                            firstDayOfMonth = firstDayOfMonth.AddHours(21);
                         }
                         else
                         {
-                            firstThursdayOfMonth = firstThursdayOfMonth.AddHours(22);
+                            firstDayOfMonth = firstDayOfMonth.AddHours(22);
                         }
 
-                        long timestamp = new DateTimeOffset(firstThursdayOfMonth).ToUnixTimeSeconds();
+                        long timestamp = new DateTimeOffset(firstDayOfMonth).ToUnixTimeSeconds();
                         IUser user = message.Author;
                         string userTag = $"{user.Mention}";
 
@@ -97,6 +97,7 @@ namespace RustTurkiye_Responder
             }
             return Task.CompletedTask;
         }
+
 
         public static DateTime GetLocalDateTime(DateTime utcDateTime, TimeZoneInfo timeZone)
         {
