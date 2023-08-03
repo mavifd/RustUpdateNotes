@@ -3,9 +3,6 @@ using Discord.WebSocket;
 using System;
 using System.Threading.Tasks;
 
-//
-//MTExMTAxNjg2MDc0NjUzMDgzNg.G5Tmp_.pk-mcC5NNneSCwWOZuvFwOzovem4rieLdLKT3k
-
 namespace RustTurkiye_Responder
 {
     internal class Program
@@ -46,48 +43,22 @@ namespace RustTurkiye_Responder
                 {
                     if (message.Content.ToLower().Contains("wipe") || message.Content.ToLower().Contains("güncelleme") || message.Content.ToLower().Contains("global"))
                     {
-                        DateTime today = DateTime.Today;
-                        DateTime firstDayOfMonth = new DateTime(today.Year, today.Month, 1);
-
-                        while (firstDayOfMonth.DayOfWeek != DayOfWeek.Thursday)
-                        {
-                            firstDayOfMonth = firstDayOfMonth.AddDays(1);
-                        }
-
-                        if (today > firstDayOfMonth || (today == firstDayOfMonth && DateTime.Now.TimeOfDay > firstDayOfMonth.TimeOfDay))
-                        {
-                            firstDayOfMonth = firstDayOfMonth.AddMonths(1);
-
-                            while (firstDayOfMonth.DayOfWeek != DayOfWeek.Thursday)
-                            {
-                                firstDayOfMonth = firstDayOfMonth.AddDays(-1);
-                            }
-                        }
-
-                        TimeZoneInfo cet = TimeZoneInfo.FindSystemTimeZoneById("Central European Standard Time");
-                        DateTime cetTime = TimeZoneInfo.ConvertTimeFromUtc(today.ToUniversalTime(), cet);
-                        bool isDaylight = cet.IsDaylightSavingTime(cetTime);
-
-                        if (isDaylight)
-                        {
-                            firstDayOfMonth = firstDayOfMonth.AddHours(21);
-                        }
-                        else
-                        {
-                            firstDayOfMonth = firstDayOfMonth.AddHours(22);
-                        }
-
-                        long timestamp = new DateTimeOffset(firstDayOfMonth).ToUnixTimeSeconds();
                         IUser user = message.Author;
                         string userTag = $"{user.Mention}";
+
+                        DateTime now = DateTime.Now;
+                        DateTime nextUpdate = GetNextUpdateDateTime(now);
+
+                        TimeSpan timeRemaining = nextUpdate - now;
 
                         EmbedBuilder embedBuilder = new EmbedBuilder();
                         embedBuilder.WithTitle(":information_source:  **Güncelleme Bilgisi**  :information_source:");
                         embedBuilder.WithDescription("`Her ayın ilk perşembesi (Yaz Dönemi 21:00 - Kış Dönemi 22:00) gelen güncelleme ile tüm sunuculara` ***Zorunlu Harita Sıfırlaması*** `atılır. BP Sıfırlaması ise sunucu sahibinin isteğine bağlıdır.` ");
                         embedBuilder.WithThumbnailUrl("https://yt3.googleusercontent.com/ytc/AL5GRJUOzRJWMKDaDQdJVVsXHCBcWQsOZYe3YZOfTj1k=s176-c-k-c0x00ffffff-no-rj-mo");
                         embedBuilder.WithFooter(DateTime.Now.ToString(), "https://cdn.discordapp.com/attachments/1060075799081918516/1072987687730032670/logo.png");
-                        embedBuilder.AddField("Sonraki Güncelleme Tarihi", $"<t:{timestamp}:F>", false);
-                        embedBuilder.AddField("Sonraki Güncellemeye Kalan Zaman", $"<t:{timestamp}:R>", false);
+
+                        embedBuilder.AddField("Sonraki Güncelleme Tarihi", $"Perşembe, {nextUpdate.ToString("dd MMMM yyyy")} saat {nextUpdate.ToString("HH:mm")}", false);
+                        embedBuilder.AddField("Sonraki Güncellemeye Kalan Zaman", $"{timeRemaining.Days} gün, {timeRemaining.Hours} saat, {timeRemaining.Minutes} dakika", false);
                         embedBuilder.AddField("Soran Kullanıcı", userTag, false);
                         embedBuilder.WithColor(Color.Blue);
 
@@ -98,14 +69,17 @@ namespace RustTurkiye_Responder
             return Task.CompletedTask;
         }
 
-
-        public static DateTime GetLocalDateTime(DateTime utcDateTime, TimeZoneInfo timeZone)
+        private DateTime GetNextUpdateDateTime(DateTime currentDate)
         {
-            utcDateTime = DateTime.SpecifyKind(utcDateTime, DateTimeKind.Utc);
+            int daysUntilNextThursday = ((int)DayOfWeek.Thursday - (int)currentDate.DayOfWeek + 7) % 7;
+            DateTime nextThursday = currentDate.Date.AddDays(daysUntilNextThursday).AddHours(21);
 
-            DateTime time = TimeZoneInfo.ConvertTime(utcDateTime, timeZone);
+            if (currentDate >= nextThursday)
+            {
+                nextThursday = nextThursday.AddMonths(1);
+            }
 
-            return time;
+            return nextThursday;
         }
 
         private Task Log(LogMessage arg)
