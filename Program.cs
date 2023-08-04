@@ -2,6 +2,7 @@
 using Discord.WebSocket;
 using System;
 using System.Threading.Tasks;
+using System.Timers;
 
 namespace RustTurkiye_Responder
 {
@@ -9,6 +10,7 @@ namespace RustTurkiye_Responder
     {
         private DiscordSocketClient _client;
         private ulong _channelId = 448607745122369536;
+        private long _nextUpdateTimestamp = 0;
 
         private static void Main(string[] args)
         {
@@ -32,7 +34,39 @@ namespace RustTurkiye_Responder
 
             _client.MessageReceived += MessageReceived;
 
+            // İlk başta bir sonraki güncelleme zamanını hesaplayın
+            CalculateNextUpdateTimestamp();
+
+            // Timer'ı başlatarak her dakika bir sonraki güncelleme zamanını yeniden hesaplayın
+            Timer timer = new Timer(60_000); // 60,000 milisaniye = 1 dakika
+            timer.Elapsed += (sender, e) => CalculateNextUpdateTimestamp();
+            timer.Start();
+
             await Task.Delay(-1);
+        }
+
+        private void CalculateNextUpdateTimestamp()
+        {
+            DateTime bugun = DateTime.Today;
+            DateTime birSonrakiAyinIlkPersembesi = new DateTime(bugun.Year, bugun.Month, 1).AddMonths(1);
+
+            while (birSonrakiAyinIlkPersembesi.DayOfWeek != DayOfWeek.Thursday)
+            {
+                birSonrakiAyinIlkPersembesi = birSonrakiAyinIlkPersembesi.AddDays(1);
+            }
+
+            birSonrakiAyinIlkPersembesi = birSonrakiAyinIlkPersembesi.AddHours(21);
+
+            TimeZoneInfo cet = TimeZoneInfo.FindSystemTimeZoneById("Central European Standard Time");
+            DateTime cetZamani = TimeZoneInfo.ConvertTimeFromUtc(birSonrakiAyinIlkPersembesi.ToUniversalTime(), cet);
+            bool yazZamani = cet.IsDaylightSavingTime(cetZamani);
+
+            if (yazZamani)
+            {
+                birSonrakiAyinIlkPersembesi = birSonrakiAyinIlkPersembesi.AddHours(1);
+            }
+
+            _nextUpdateTimestamp = new DateTimeOffset(birSonrakiAyinIlkPersembesi).ToUnixTimeSeconds();
         }
 
         private Task MessageReceived(SocketMessage message)
@@ -46,10 +80,9 @@ namespace RustTurkiye_Responder
                         IUser user = message.Author;
                         string userTag = $"{user.Mention}";
 
-                        DateTime now = DateTime.Now;
-                        DateTime nextUpdate = GetNextUpdateDateTime(now);
-
-                        TimeSpan timeRemaining = nextUpdate - now;
+                        // Şu anki zamanı Central European Standard Time (CET) zaman dilimine göre hesaplayın
+                        TimeZoneInfo cet = TimeZoneInfo.FindSystemTimeZoneById("Central European Standard Time");
+                        DateTime cetZamani = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, cet);
 
                         EmbedBuilder embedBuilder = new EmbedBuilder();
                         embedBuilder.WithTitle(":information_source:  **Güncelleme Bilgisi**  :information_source:");
@@ -57,8 +90,14 @@ namespace RustTurkiye_Responder
                         embedBuilder.WithThumbnailUrl("https://yt3.googleusercontent.com/ytc/AL5GRJUOzRJWMKDaDQdJVVsXHCBcWQsOZYe3YZOfTj1k=s176-c-k-c0x00ffffff-no-rj-mo");
                         embedBuilder.WithFooter(DateTime.Now.ToString(), "https://cdn.discordapp.com/attachments/1060075799081918516/1072987687730032670/logo.png");
 
-                        embedBuilder.AddField("Sonraki Güncelleme Tarihi", $"Perşembe, {nextUpdate.ToString("dd MMMM yyyy")} saat {nextUpdate.ToString("HH:mm")}", false);
-                        embedBuilder.AddField("Sonraki Güncellemeye Kalan Zaman", $"{timeRemaining.Days} gün, {timeRemaining.Hours} saat, {timeRemaining.Minutes} dakika", false);
+                        // Eğer şu anki zaman 21:00'dan sonra ise, bir sonraki güncelleme zamanını bir sonraki ayınkini hesaplayın
+                        if (cetZamani.Hour >= 21 && cetZamani.Month == DateTimeOffset.FromUnixTimeSeconds(_nextUpdateTimestamp).DateTime.Month)
+                        {
+                            CalculateNextUpdateTimestamp();
+                        }
+
+                        embedBuilder.AddField("Sonraki Güncelleme Tarihi", $"<t:{_nextUpdateTimestamp}:F>", false);
+                        embedBuilder.AddField("Sonraki Güncellemeye Kalan Zaman", $"<t:{_nextUpdateTimestamp}:R>", false);
                         embedBuilder.AddField("Soran Kullanıcı", userTag, false);
                         embedBuilder.WithColor(Color.Blue);
 
@@ -67,19 +106,6 @@ namespace RustTurkiye_Responder
                 }
             }
             return Task.CompletedTask;
-        }
-
-        private DateTime GetNextUpdateDateTime(DateTime currentDate)
-        {
-            int daysUntilNextThursday = ((int)DayOfWeek.Thursday - (int)currentDate.DayOfWeek + 7) % 7;
-            DateTime nextThursday = currentDate.Date.AddDays(daysUntilNextThursday).AddHours(21);
-
-            if (currentDate >= nextThursday)
-            {
-                nextThursday = nextThursday.AddMonths(1);
-            }
-
-            return nextThursday;
         }
 
         private Task Log(LogMessage arg)
