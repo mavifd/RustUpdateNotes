@@ -47,26 +47,49 @@ namespace RustTurkiye_Responder
 
         private void CalculateNextUpdateTimestamp()
         {
+            // Şu anki zamanı alın
             DateTime bugun = DateTime.Today;
-            DateTime birSonrakiAyinIlkPersembesi = new DateTime(bugun.Year, bugun.Month, 1).AddMonths(1);
 
-            while (birSonrakiAyinIlkPersembesi.DayOfWeek != DayOfWeek.Thursday)
+            // Eğer bu ayın ilk perşembesi saat 21:00'den önce ise, bu ayın ilk perşembesini hesaplayın
+            if (DateTime.Now.Hour < 21)
             {
-                birSonrakiAyinIlkPersembesi = birSonrakiAyinIlkPersembesi.AddDays(1);
+                DateTime buAyinIlkPersembesi = new DateTime(bugun.Year, bugun.Month, 1);
+                while (buAyinIlkPersembesi.DayOfWeek != DayOfWeek.Thursday)
+                {
+                    buAyinIlkPersembesi = buAyinIlkPersembesi.AddDays(1);
+                }
+                buAyinIlkPersembesi = buAyinIlkPersembesi.AddHours(21);
+
+                //TimeZoneInfo cet = TimeZoneInfo.FindSystemTimeZoneById("Central European Standard Time");
+                //DateTime cetZamani = TimeZoneInfo.ConvertTimeFromUtc(buAyinIlkPersembesi.ToUniversalTime(), cet);
+                //bool yazZamani = cet.IsDaylightSavingTime(cetZamani);
+                //if (yazZamani)
+                //{
+                //    buAyinIlkPersembesi = buAyinIlkPersembesi.AddHours(1);
+                //}
+
+                _nextUpdateTimestamp = new DateTimeOffset(buAyinIlkPersembesi).ToUnixTimeSeconds();
             }
-
-            birSonrakiAyinIlkPersembesi = birSonrakiAyinIlkPersembesi.AddHours(21);
-
-            TimeZoneInfo cet = TimeZoneInfo.FindSystemTimeZoneById("Central European Standard Time");
-            DateTime cetZamani = TimeZoneInfo.ConvertTimeFromUtc(birSonrakiAyinIlkPersembesi.ToUniversalTime(), cet);
-            bool yazZamani = cet.IsDaylightSavingTime(cetZamani);
-
-            if (yazZamani)
+            else
             {
-                birSonrakiAyinIlkPersembesi = birSonrakiAyinIlkPersembesi.AddHours(1);
-            }
+                // Eğer bu ayın ilk perşembesi saat 21:00'den sonra ise, bir sonraki ayın ilk perşembesini hesaplayın
+                DateTime birSonrakiAyinIlkPersembesi = new DateTime(bugun.Year, bugun.Month, 1).AddMonths(1);
+                while (birSonrakiAyinIlkPersembesi.DayOfWeek != DayOfWeek.Thursday)
+                {
+                    birSonrakiAyinIlkPersembesi = birSonrakiAyinIlkPersembesi.AddDays(1);
+                }
+                birSonrakiAyinIlkPersembesi = birSonrakiAyinIlkPersembesi.AddHours(21);
+                TimeZoneInfo cet = TimeZoneInfo.FindSystemTimeZoneById("Central European Standard Time");
+                DateTime cetZamani = TimeZoneInfo.ConvertTimeFromUtc(birSonrakiAyinIlkPersembesi.ToUniversalTime(), cet);
+                bool yazZamani = cet.IsDaylightSavingTime(cetZamani);
 
-            _nextUpdateTimestamp = new DateTimeOffset(birSonrakiAyinIlkPersembesi).ToUnixTimeSeconds();
+                if (yazZamani)
+                {
+                    birSonrakiAyinIlkPersembesi = birSonrakiAyinIlkPersembesi.AddHours(1);
+                }
+
+                _nextUpdateTimestamp = new DateTimeOffset(birSonrakiAyinIlkPersembesi).ToUnixTimeSeconds();
+            }
         }
 
         private Task MessageReceived(SocketMessage message)
