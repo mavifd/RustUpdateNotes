@@ -48,7 +48,7 @@ namespace RustTurkiye_Responder
 
             //bugün 21:00 timestamp alma
             DateTime bugun = DateTime.Today;
-            DateTime saat21 = bugun.AddHours(21);
+            DateTime saat21 = bugun.AddHours(22);
             long bugüntimestamp = ((DateTimeOffset)saat21).ToUnixTimeSeconds();
 
             //ayın ilk perşembesi 21:00 timestamp alma
@@ -56,7 +56,7 @@ namespace RustTurkiye_Responder
             DateTime ilkGun = new DateTime(suAn.Year, suAn.Month, 1);
             int gunDegeri = (int)ilkGun.DayOfWeek;
             DateTime ilkPersembe = ilkGun.AddDays((4 - gunDegeri + 7) % 7);
-            DateTime saat21ilkay = ilkPersembe.AddHours(21);
+            DateTime saat21ilkay = ilkPersembe.AddHours(22);
             long ayinilkpersembesitimestamp = ((DateTimeOffset)saat21ilkay).ToUnixTimeSeconds();
 
 
@@ -75,7 +75,7 @@ namespace RustTurkiye_Responder
                 {
                     birSonrakiAyinIlkPersembesi = birSonrakiAyinIlkPersembesi.AddDays(1);
                 }
-                birSonrakiAyinIlkPersembesi = birSonrakiAyinIlkPersembesi.AddHours(21);
+                birSonrakiAyinIlkPersembesi = birSonrakiAyinIlkPersembesi.AddHours(22);
                 _nextUpdateTimestamp = new DateTimeOffset(birSonrakiAyinIlkPersembesi).ToUnixTimeSeconds();
             }
             else 
@@ -87,7 +87,7 @@ namespace RustTurkiye_Responder
                 {
                     buAyinIlkPersembesi = buAyinIlkPersembesi.AddDays(1);
                 }
-                buAyinIlkPersembesi = buAyinIlkPersembesi.AddHours(21);
+                buAyinIlkPersembesi = buAyinIlkPersembesi.AddHours(22);
                 _nextUpdateTimestamp = new DateTimeOffset(buAyinIlkPersembesi).ToUnixTimeSeconds();
             }
         }
