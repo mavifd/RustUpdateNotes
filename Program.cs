@@ -11,6 +11,7 @@ namespace RustTurkiye_Responder
         private DiscordSocketClient _client;
         private ulong _channelId = 448607745122369536;
         private long _nextUpdateTimestamp = 0;
+        private static int consoleCls = 0;
 
         private static void Main(string[] args)
         {
@@ -61,15 +62,15 @@ namespace RustTurkiye_Responder
 
 
             //loglama
-            Console.WriteLine(bugüntimestamp.ToString());
-            Console.WriteLine(ayinilkpersembesitimestamp.ToString());
+            Console.WriteLine(DateTime.Now + " - TODAY:" + bugüntimestamp.ToString());
+            Console.WriteLine(DateTime.Now + " - FIRST TD:" + ayinilkpersembesitimestamp.ToString());
 
 
             //ilk persembe geçildi mi?
-            if(bugüntimestamp > ayinilkpersembesitimestamp) 
+            if (bugüntimestamp > ayinilkpersembesitimestamp)
             {
                 //ilk perşembe geçildi
-                Console.WriteLine("ilk perşembe geçilmiş");
+                Console.WriteLine(DateTime.Now + " - " + "Thursday passed.");
                 DateTime birSonrakiAyinIlkPersembesi = new DateTime(bugun.Year, bugun.Month, 1).AddMonths(1);
                 while (birSonrakiAyinIlkPersembesi.DayOfWeek != DayOfWeek.Thursday)
                 {
@@ -78,10 +79,10 @@ namespace RustTurkiye_Responder
                 birSonrakiAyinIlkPersembesi = birSonrakiAyinIlkPersembesi.AddHours(22);
                 _nextUpdateTimestamp = new DateTimeOffset(birSonrakiAyinIlkPersembesi).ToUnixTimeSeconds();
             }
-            else 
+            else
             {
                 //ilk perşembe geçilmedi
-                Console.WriteLine("ilk perşembe geçilmemiş");
+                Console.WriteLine(DateTime.Now + " - " + "Thursday not passed.");
                 DateTime buAyinIlkPersembesi = new DateTime(bugun.Year, bugun.Month, 1);
                 while (buAyinIlkPersembesi.DayOfWeek != DayOfWeek.Thursday)
                 {
@@ -90,13 +91,23 @@ namespace RustTurkiye_Responder
                 buAyinIlkPersembesi = buAyinIlkPersembesi.AddHours(22);
                 _nextUpdateTimestamp = new DateTimeOffset(buAyinIlkPersembesi).ToUnixTimeSeconds();
             }
+
+            if(consoleCls == 10)
+            {
+                Console.Clear();
+                consoleCls = 0;
+            }
+            else
+            {
+                consoleCls++;
+            }
         }
 
         private Task MessageReceived(SocketMessage message)
         {
             if (message.Channel.Id == _channelId)
             {
-                if (message.Author.Id != _client.CurrentUser.Id) 
+                if (message.Author.Id != _client.CurrentUser.Id)
                 {
                     if (message.Content.ToLower().Contains("wipe") || message.Content.ToLower().Contains("güncelleme") || message.Content.ToLower().Contains("global"))
                     {
