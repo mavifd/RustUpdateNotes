@@ -1,6 +1,11 @@
 ﻿using Discord;
+using Discord.Commands;
+using Discord.Net;
 using Discord.WebSocket;
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Remoting.Contexts;
 using System.Threading.Tasks;
 using System.Timers;
 
@@ -10,6 +15,8 @@ namespace RustTurkiye_Responder
     {
         private DiscordSocketClient _client;
         private ulong _channelId = 448607745122369536;
+        private ulong _channelIdGuild = 448441303043145729;
+        
         private long _nextUpdateTimestamp = 0;
         private static int consoleCls = 0;
 
@@ -62,15 +69,16 @@ namespace RustTurkiye_Responder
 
 
             //loglama
-            Console.WriteLine(DateTime.Now + " - TODAY:" + bugüntimestamp.ToString());
-            Console.WriteLine(DateTime.Now + " - FIRST TD:" + ayinilkpersembesitimestamp.ToString());
+            //Console.WriteLine(DateTime.Now + " - TODAY:" + bugüntimestamp.ToString());
+            //Console.WriteLine(DateTime.Now + " - FIRST TD:" + ayinilkpersembesitimestamp.ToString());
 
 
             //ilk persembe geçildi mi?
             if (bugüntimestamp > ayinilkpersembesitimestamp)
             {
                 //ilk perşembe geçildi
-                Console.WriteLine(DateTime.Now + " - " + "Thursday passed.");
+                //Console.WriteLine(DateTime.Now + " - " + "Thursday passed.");
+
                 DateTime birSonrakiAyinIlkPersembesi = new DateTime(bugun.Year, bugun.Month, 1).AddMonths(1);
                 while (birSonrakiAyinIlkPersembesi.DayOfWeek != DayOfWeek.Thursday)
                 {
@@ -82,7 +90,8 @@ namespace RustTurkiye_Responder
             else
             {
                 //ilk perşembe geçilmedi
-                Console.WriteLine(DateTime.Now + " - " + "Thursday not passed.");
+                //Console.WriteLine(DateTime.Now + " - " + "Thursday not passed.");
+
                 DateTime buAyinIlkPersembesi = new DateTime(bugun.Year, bugun.Month, 1);
                 while (buAyinIlkPersembesi.DayOfWeek != DayOfWeek.Thursday)
                 {
@@ -103,13 +112,36 @@ namespace RustTurkiye_Responder
             }
         }
 
+        List<string> blacklistedkeywordList = new List<string> 
+        {
+
+            "istisnalar",
+            "sürtük",
+            "tüzük",
+            "zehir",
+            "temizle",
+            "silme"
+
+        };
+
+
+        List<string> updatekeywordList = new List<string> 
+        { 
+
+            "wipe",
+            "güncelleme", 
+            "global", 
+            "update" 
+
+        };
+
         private Task MessageReceived(SocketMessage message)
         {
             if (message.Channel.Id == _channelId)
             {
                 if (message.Author.Id != _client.CurrentUser.Id)
                 {
-                    if (message.Content.ToLower().Contains("wipe") || message.Content.ToLower().Contains("güncelleme") || message.Content.ToLower().Contains("global"))
+                    if (updatekeywordList.Any(keyword => message.Content.ToLower().Contains(keyword)))
                     {
                         IUser user = message.Author;
                         string userTag = $"{user.Mention}";
@@ -125,6 +157,32 @@ namespace RustTurkiye_Responder
                         embedBuilder.WithColor(Color.Blue);
 
                         return message.Channel.SendMessageAsync("", false, embedBuilder.Build());
+                    }
+                }
+            }
+            
+            if (message.Channel.Id == _channelIdGuild)
+            {
+                if (message.Author.Id != _client.CurrentUser.Id)
+                {
+                    if (blacklistedkeywordList.Any(keyword => message.Content.ToLower().Contains(keyword)))
+                    {
+                        Console.WriteLine(DateTime.Now + " - Ceza veriliyor!");
+
+                        SocketGuildUser user = message.Author as SocketGuildUser;
+
+                        IRole roleToAssign = user.Guild.Roles.FirstOrDefault(x => x.Name == "CEZALI");
+
+                        if (roleToAssign != null)
+                        {
+                            user.AddRoleAsync(roleToAssign);
+                        }
+                        else
+                        {
+                            Console.WriteLine(DateTime.Now + " - Cezalı rolü verilemedi.");
+                        }
+
+                        message.DeleteAsync();
                     }
                 }
             }
