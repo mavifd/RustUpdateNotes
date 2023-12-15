@@ -46,7 +46,7 @@ namespace RustTurkiye_Responder
 
             Timer timer = new Timer(60_000);
             timer.Elapsed += (sender, e) => CalculateNextUpdateTimestamp();
-            timer.Start();
+            timer.Start();          
 
             await Task.Delay(-1);
         }
@@ -120,6 +120,7 @@ namespace RustTurkiye_Responder
             "tüzük",
             "zehir",
             "temizle",
+            "iyi iletişim",
             "silme"
 
         };
@@ -143,6 +144,8 @@ namespace RustTurkiye_Responder
                 {
                     if (updatekeywordList.Any(keyword => message.Content.ToLower().Contains(keyword)))
                     {
+                        Console.WriteLine(DateTime.Now + " - Güncelleme cevaplama...");
+
                         IUser user = message.Author;
                         string userTag = $"{user.Mention}";
 
