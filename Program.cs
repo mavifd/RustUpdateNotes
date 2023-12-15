@@ -115,7 +115,7 @@ namespace RustTurkiye_Responder
         List<string> blacklistedkeywordList = new List<string> 
         {
 
-            "istisnalar",
+            "istisna",
             "sürtük",
             "tüzük",
             "zehir",
