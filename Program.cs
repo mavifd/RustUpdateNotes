@@ -18,7 +18,8 @@ namespace RustTurkiye_Responder
         private ulong _channelIdGuild = 448441303043145729;
         
         private long _nextUpdateTimestamp = 0;
-        private static int consoleCls = 0;
+
+        private Timer timestampTimer;
 
         private static void Main(string[] args)
         {
@@ -46,9 +47,19 @@ namespace RustTurkiye_Responder
 
             Timer timer = new Timer(60_000);
             timer.Elapsed += (sender, e) => CalculateNextUpdateTimestamp();
-            timer.Start();          
+            timer.Start();
+
+            timestampTimer = new Timer(60000);
+            timestampTimer.Elapsed += (sender, e) => PrintCurrentTimestamp();
+            timestampTimer.Start();
 
             await Task.Delay(-1);
+        }
+
+
+        private void PrintCurrentTimestamp()
+        {
+            Console.WriteLine(DateTime.Now + " | Çalışıyor...");
         }
 
         private void CalculateNextUpdateTimestamp()
@@ -101,15 +112,6 @@ namespace RustTurkiye_Responder
                 _nextUpdateTimestamp = new DateTimeOffset(buAyinIlkPersembesi).ToUnixTimeSeconds();
             }
 
-            if(consoleCls == 10)
-            {
-                Console.Clear();
-                consoleCls = 0;
-            }
-            else
-            {
-                consoleCls++;
-            }
         }
 
         List<string> blacklistedkeywordList = new List<string> 
