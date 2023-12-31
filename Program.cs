@@ -1,11 +1,9 @@
 ﻿using Discord;
-using Discord.Commands;
-using Discord.Net;
 using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Runtime.Remoting.Contexts;
 using System.Threading.Tasks;
 using System.Timers;
 
@@ -16,13 +14,18 @@ namespace RustTurkiye_Responder
         private DiscordSocketClient _client;
         private ulong _channelId = 448607745122369536;
         private ulong _channelIdGuild = 448441303043145729;
-        
+
         private long _nextUpdateTimestamp = 0;
 
         private Timer timestampTimer;
 
         private static void Main(string[] args)
         {
+            Console.SetWindowSize(65, 20);
+            Console.BufferHeight = Console.WindowHeight;
+            Console.BufferWidth = Console.WindowWidth;
+            Console.Title = "Responder";
+
             new Program().RunBotAsync().GetAwaiter().GetResult();
         }
 
@@ -56,15 +59,13 @@ namespace RustTurkiye_Responder
             await Task.Delay(-1);
         }
 
-
         private void PrintCurrentTimestamp()
         {
-            Console.WriteLine(DateTime.Now + " | Çalışıyor...");
+            LogMessage("Çalışıyor...");
         }
 
         private void CalculateNextUpdateTimestamp()
         {
-
             //bugün 21:00 timestamp alma
             DateTime bugun = DateTime.Today;
             DateTime saat21 = bugun.AddHours(22);
@@ -78,11 +79,9 @@ namespace RustTurkiye_Responder
             DateTime saat21ilkay = ilkPersembe.AddHours(22);
             long ayinilkpersembesitimestamp = ((DateTimeOffset)saat21ilkay).ToUnixTimeSeconds();
 
-
             //loglama
             //Console.WriteLine(DateTime.Now + " - TODAY:" + bugüntimestamp.ToString());
             //Console.WriteLine(DateTime.Now + " - FIRST TD:" + ayinilkpersembesitimestamp.ToString());
-
 
             //ilk persembe geçildi mi?
             if (bugüntimestamp > ayinilkpersembesitimestamp)
@@ -111,12 +110,10 @@ namespace RustTurkiye_Responder
                 buAyinIlkPersembesi = buAyinIlkPersembesi.AddHours(22);
                 _nextUpdateTimestamp = new DateTimeOffset(buAyinIlkPersembesi).ToUnixTimeSeconds();
             }
-
         }
 
-        List<string> blacklistedkeywordList = new List<string> 
+        List<string> blacklistedkeywordList = new List<string>
         {
-
             "istisna",
             "sürtük",
             "tüzük",
@@ -124,18 +121,14 @@ namespace RustTurkiye_Responder
             "temizle",
             "iyi iletişim",
             "silme"
-
         };
 
-
-        List<string> updatekeywordList = new List<string> 
-        { 
-
+        List<string> updatekeywordList = new List<string>
+        {
             "wipe",
-            "güncelleme", 
-            "global", 
-            "update" 
-
+            "güncelleme",
+            "global",
+            "update"
         };
 
         private Task MessageReceived(SocketMessage message)
@@ -146,7 +139,7 @@ namespace RustTurkiye_Responder
                 {
                     if (updatekeywordList.Any(keyword => message.Content.ToLower().Contains(keyword)))
                     {
-                        Console.WriteLine(DateTime.Now + " - Güncelleme cevaplama...");
+                        LogMessage("Güncelleme sorusu cevaplanıyor...");
 
                         IUser user = message.Author;
                         string userTag = $"{user.Mention}";
@@ -165,14 +158,14 @@ namespace RustTurkiye_Responder
                     }
                 }
             }
-            
+
             if (message.Channel.Id == _channelIdGuild)
             {
                 if (message.Author.Id != _client.CurrentUser.Id)
                 {
                     if (blacklistedkeywordList.Any(keyword => message.Content.ToLower().Contains(keyword)))
                     {
-                        Console.WriteLine(DateTime.Now + " - Ceza veriliyor!");
+                        LogMessage("Ceza veriliyor!");
 
                         SocketGuildUser user = message.Author as SocketGuildUser;
 
@@ -184,13 +177,16 @@ namespace RustTurkiye_Responder
                         }
                         else
                         {
-                            Console.WriteLine(DateTime.Now + " - Cezalı rolü verilemedi.");
+                            LogMessage("Cezalı rolü verilemedi.");
                         }
+
+                        LogMessage("Mesaj siliniyor...");
 
                         message.DeleteAsync();
                     }
                 }
             }
+
             return Task.CompletedTask;
         }
 
@@ -198,6 +194,18 @@ namespace RustTurkiye_Responder
         {
             Console.WriteLine(arg);
             return Task.CompletedTask;
+        }
+
+        private static void LogMessage(string message)
+        {
+            string logEntry = $"{DateTime.Now} | {message}";
+
+            Console.WriteLine(logEntry);
+
+            using (StreamWriter writer = new StreamWriter("log.txt", true))
+            {
+                writer.WriteLine(logEntry);
+            }
         }
     }
 }
