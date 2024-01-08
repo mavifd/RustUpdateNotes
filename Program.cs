@@ -19,8 +19,15 @@ namespace RustTurkiye_Responder
 
         private Timer timestampTimer;
 
+        private static Timer timer;
+        private static DateTime startTime;
         private static void Main(string[] args)
         {
+            startTime = DateTime.Now;
+            timer = new Timer(1000);
+            timer.Elapsed += OnTimerElapsed;
+            timer.Start();
+
             Console.SetWindowSize(65, 20);
             Console.BufferHeight = Console.WindowHeight;
             Console.BufferWidth = Console.WindowWidth;
@@ -29,6 +36,35 @@ namespace RustTurkiye_Responder
             new Program().RunBotAsync().GetAwaiter().GetResult();
         }
 
+        static void OnTimerElapsed(object sender, ElapsedEventArgs e)
+        {
+            TimeSpan elapsed = DateTime.Now - startTime;
+
+            int days = elapsed.Days;
+            int hours = elapsed.Hours;
+            int minutes = elapsed.Minutes;
+            int seconds = elapsed.Seconds;
+
+            if (seconds == 59)
+            {
+                seconds = 0;
+                minutes++;
+
+                if (minutes == 60)
+                {
+                    minutes = 0;
+                    hours++;
+
+                    if (hours == 24)
+                    {
+                        hours = 0;
+                        days++;
+                    }
+                }
+            }
+
+            Console.Title = $"Responder - Running for {days} Day | {hours:D2}:{minutes:D2}:{seconds:D2}";
+        }
         public async Task RunBotAsync()
         {
             var config = new DiscordSocketConfig
