@@ -1,0 +1,6 @@
+@ShutdownOnFailedCommand 1 //set to 0 if updating multiple servers at once
+@NoPromptForPassword 1
+login anonymous
+app_info_update 1
+app_info_print 258550
+quit
