@@ -35,7 +35,7 @@ namespace RustTurkiye_Responder
 
         private static void Main(string[] args)
         {
-            Console.Title = "RT_Kontrol";
+            Console.Title = "RT_Kontrol - Starting...";
 
             LogMessage("[UpdateChecker] SteamCMD kontrol ediliyor...");
             if (File.Exists("C:\\steamcmd\\steamcmd.exe"))
@@ -144,7 +144,6 @@ namespace RustTurkiye_Responder
             {
                 await Task.Delay(100);
             }
-            LogMessage("Connected!");
 
             System.Timers.Timer ResponderRunner = new System.Timers.Timer(60000); // 1 dakikada bir cevap güncelle
             ResponderRunner.Elapsed += (sender, e) => ResponderRunner_Elapse();
@@ -155,8 +154,12 @@ namespace RustTurkiye_Responder
             CommitTrackRunner.Start();
 
             System.Timers.Timer UpdateCheckRunner = new System.Timers.Timer(1); // güncellemeyi mümkün olduğu sürece kontrol et
-            CommitTrackRunner.Elapsed += (sender, e) => UpdateCheck_Elapse();
-            CommitTrackRunner.Start();
+            UpdateCheckRunner.Elapsed += (sender, e) => UpdateCheck_Elapse();
+            UpdateCheckRunner.Start();
+
+            System.Timers.Timer RunTimeChecker = new System.Timers.Timer(1000); // güncellemeyi mümkün olduğu sürece kontrol et
+            RunTimeChecker.Elapsed += (sender, e) => RunTimeChecker_Elapse();
+            RunTimeChecker.Start();
 
             await Task.Delay(-1);
         }
@@ -169,29 +172,63 @@ namespace RustTurkiye_Responder
             return Task.CompletedTask;
         }
 
+        private static DateTime startTime;
+
+        private void RunTimeChecker_Elapse()
+        {
+            TimeSpan elapsed = DateTime.Now - startTime;
+            int days = elapsed.Days;
+            int hours = elapsed.Hours;
+            int minutes = elapsed.Minutes;
+            int seconds = elapsed.Seconds;
+            if (seconds == 59)
+            {
+                seconds = 0;
+                minutes++;
+
+                if (minutes == 60)
+                {
+                    minutes = 0;
+                    hours++;
+
+                    if (hours == 24)
+                    {
+                        hours = 0;
+                        days++;
+                    }
+                }
+            }
+            Console.Title = $"RT_Kontrol - Running for {days} Day | {hours:D2}:{minutes:D2}:{seconds:D2}";
+        }
+
+        private static readonly object fileLock = new object();
+
         private void UpdateCheck_Elapse()
         {
-            string mevcutOyun = GetRustVersionAsync("rustapp.txt").Result;
+            lock (fileLock)
+            {
+                string mevcutOyun = GetRustVersionAsync("rustapp.txt").Result;
 
-            LogMessage($"Oyun Mevcut Sürüm: {mevcutOyun}");
+                LogMessage($"[UpdateChecker] Oyun Mevcut Sürüm: {mevcutOyun}");
 
-            string mevcutSunucu = GetRustVersionAsync("rustserver.txt").Result;
+                string mevcutSunucu = GetRustVersionAsync("rustserver.txt").Result;
 
-            LogMessage($"Sunucu Mevcut Sürüm: {mevcutSunucu}");
+                LogMessage($"[UpdateChecker] Sunucu Mevcut Sürüm: {mevcutSunucu}");
 
-            CheckAndUpdateVersion(
-                EnSonOyun,
-                mevcutOyun,
-                ":radioactive: **Oyuncular için yeni bir Güncelleme geldi!** :radioactive:",
-                "Güncellemeyi görmüyorsanız, Steaminizi yeniden başlatın.",
-                false);
+                CheckAndUpdateVersion(
+                   EnSonOyun,
+                   mevcutOyun,
+                   ":radioactive: **Oyuncular için yeni bir Güncelleme geldi!** :radioactive:",
+                   "Güncellemeyi görmüyorsanız, Steaminizi yeniden başlatın.",
+                   false);
 
-            CheckAndUpdateVersion(
-                EnSonSunucu,
-                mevcutSunucu,
-                ":radioactive: **Sunucular için yeni bir Güncelleme geldi!** :radioactive:",
-                "Sunucu sahipleri, sunucularını güncelleyebilir.",
-                true);
+                CheckAndUpdateVersion(
+                   EnSonSunucu,
+                   mevcutSunucu,
+                   ":radioactive: **Sunucular için yeni bir Güncelleme geldi!** :radioactive:",
+                   "Sunucu sahipleri, sunucularını güncelleyebilir.",
+                   true);
+            }
         }
 
         private static async Task<string> GetRustVersionAsync(string scriptFileName)
@@ -228,7 +265,7 @@ namespace RustTurkiye_Responder
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Genel Hata: {ex.Message}");
+                Console.WriteLine($"[UpdateChecker] Genel Hata: {ex.Message}");
                 return "not valid";
             }
         }
@@ -279,7 +316,7 @@ namespace RustTurkiye_Responder
                     if (storedCommits.Count >= maxCommits)
                     {
                         var oldestCommits = storedCommits.Take(storedCommits.Count - keepLatestCommits).ToList();
-                        LogMessage("Eski veriler (stored) siliniyor.");
+                        LogMessage("[CommitTracker] Eski veriler (stored) siliniyor.");
                         foreach (var commit in oldestCommits)
                         {
                             storedCommits.Remove(commit);
@@ -289,7 +326,7 @@ namespace RustTurkiye_Responder
                     if (sentCommits.Count >= maxCommits)
                     {
                         var oldestCommits = sentCommits.Take(sentCommits.Count - keepLatestCommits).ToList();
-                        LogMessage("Eski veriler (sended) siliniyor.");
+                        LogMessage("[CommitTracker] Eski veriler (sended) siliniyor.");
                         foreach (var commit in oldestCommits)
                         {
                             sentCommits.Remove(commit);
@@ -309,7 +346,7 @@ namespace RustTurkiye_Responder
                             foreach (var commit in differences)
                             {
                                 sentCommits.Add(commit.message);
-                                LogMessage($"Yeni yorum --> {commit.message}");
+                                LogMessage($"[CommitTracker] Yeni yorum --> {commit.message}");
 
                                 EmbedBuilder embedBuilder = new EmbedBuilder();
                                 embedBuilder.WithTitle(commit.user.name + "\n" + commit.branch);
@@ -329,14 +366,14 @@ namespace RustTurkiye_Responder
                 }
                 else
                 {
-                    LogMessage("Yeni veri alınamadı.");
+                    LogMessage("[CommitTracker] Yeni veri alınamadı.");
                 }
 
-                LogMessage($"Depolanan: {storedCommits.Count} - Gönderilen: {sentCommits.Count}");
+                LogMessage($"[CommitTracker] Depolanan: {storedCommits.Count} - Gönderilen: {sentCommits.Count}");
             }
             catch (Exception ex)
             {
-                LogMessage($"Hata oluştu: {ex.Message}");
+                LogMessage($"[CommitTracker] Hata oluştu: {ex.Message}");
             }
         }
 
@@ -371,6 +408,9 @@ namespace RustTurkiye_Responder
                 buAyinIlkPersembesi = buAyinIlkPersembesi.AddHours(22);
                 _nextUpdateTimestamp = new DateTimeOffset(buAyinIlkPersembesi).ToUnixTimeSeconds();
             }
+            DateTimeOffset dateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(_nextUpdateTimestamp);
+            DateTime dateTime = dateTimeOffset.DateTime;
+            LogMessage($"[Responder] Sonraki Güncelleme Tarihi: {dateTime}");
         }
 
         private List<string> blacklistedkeywordList = new List<string>
@@ -400,7 +440,7 @@ namespace RustTurkiye_Responder
                 {
                     if (updatekeywordList.Any(keyword => message.Content.ToLower().Contains(keyword)))
                     {
-                        LogMessage("Güncelleme sorusu cevaplanıyor...");
+                        LogMessage("[Responder] Güncelleme sorusu cevaplanıyor...");
 
                         IUser user = message.Author;
                         string userTag = $"{user.Mention}";
@@ -426,7 +466,7 @@ namespace RustTurkiye_Responder
                 {
                     if (blacklistedkeywordList.Any(keyword => message.Content.ToLower().Contains(keyword)))
                     {
-                        LogMessage("Ceza veriliyor!");
+                        LogMessage("[Responder] Ceza veriliyor!");
 
                         SocketGuildUser user = message.Author as SocketGuildUser;
 
@@ -438,10 +478,10 @@ namespace RustTurkiye_Responder
                         }
                         else
                         {
-                            LogMessage("Cezalı rolü verilemedi.");
+                            LogMessage("[Responder] Cezalı rolü verilemedi.");
                         }
 
-                        LogMessage("Mesaj siliniyor...");
+                        LogMessage("[Responder] Mesaj siliniyor...");
 
                         message.DeleteAsync();
                     }
@@ -453,14 +493,14 @@ namespace RustTurkiye_Responder
 
         private Task Log(LogMessage arg)
         {
-            Console.WriteLine(arg);
+            string logEntry = $"{DateTime.Now} | [DiscordConnection] {arg}";
+            Console.WriteLine(logEntry);
             return Task.CompletedTask;
         }
 
         private static void LogMessage(string message)
         {
             string logEntry = $"{DateTime.Now} | {message}";
-
             Console.WriteLine(logEntry);
         }
 
