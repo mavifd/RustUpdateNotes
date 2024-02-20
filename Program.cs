@@ -145,15 +145,17 @@ namespace RustTurkiye_Responder
                 await Task.Delay(100);
             }
 
+            ResponderRunner_Elapse();
+
             System.Timers.Timer ResponderRunner = new System.Timers.Timer(60000); // 1 dakikada bir cevap güncelle
             ResponderRunner.Elapsed += (sender, e) => ResponderRunner_Elapse();
             ResponderRunner.Start();
 
-            System.Timers.Timer CommitTrackRunner = new System.Timers.Timer(60000); // 1 dakikada bir commit kontrol et
+            System.Timers.Timer CommitTrackRunner = new System.Timers.Timer(30000); // 1 dakikada bir commit kontrol et
             CommitTrackRunner.Elapsed += (sender, e) => CommitTrack_Elapse();
             CommitTrackRunner.Start();
 
-            System.Timers.Timer UpdateCheckRunner = new System.Timers.Timer(1); // güncellemeyi mümkün olduğu sürece kontrol et
+            System.Timers.Timer UpdateCheckRunner = new System.Timers.Timer(1000); // güncellemeyi mümkün olduğu sürece kontrol et
             UpdateCheckRunner.Elapsed += (sender, e) => UpdateCheck_Elapse();
             UpdateCheckRunner.Start();
 
@@ -379,38 +381,35 @@ namespace RustTurkiye_Responder
 
         private void ResponderRunner_Elapse()
         {
-            DateTime bugun = DateTime.Today;
-            DateTime saat21 = bugun.AddHours(22);
-            long bugüntimestamp = ((DateTimeOffset)saat21).ToUnixTimeSeconds();
-            DateTime suAn = DateTime.Now;
-            DateTime ilkGun = new DateTime(suAn.Year, suAn.Month, 1);
-            int gunDegeri = (int)ilkGun.DayOfWeek;
-            DateTime ilkPersembe = ilkGun.AddDays((4 - gunDegeri + 7) % 7);
-            DateTime saat21ilkay = ilkPersembe.AddHours(22);
-            long ayinilkpersembesitimestamp = ((DateTimeOffset)saat21ilkay).ToUnixTimeSeconds();
-            if (bugüntimestamp > ayinilkpersembesitimestamp)
+            int DayTimeHour = 19; //18 YAZ, 19 KIŞ.
+            DateTime Today = DateTime.Today;
+            Today = Today.AddHours(DayTimeHour);
+            long TodayTimeStamp = ((DateTimeOffset)Today).ToUnixTimeSeconds();
+            DateTime Current = DateTime.Today;
+            while (Current.Day != 1) { Current = Current.AddDays(-1); }
+            Current = Current.AddDays((4 - (int)Current.DayOfWeek + 7) % 7);
+            Current = Current.AddHours(DayTimeHour);
+            long FirstThursdayTimeStamp = ((DateTimeOffset)Current).ToUnixTimeSeconds();
+            if (TodayTimeStamp > FirstThursdayTimeStamp)
             {
-                DateTime birSonrakiAyinIlkPersembesi = new DateTime(bugun.Year, bugun.Month, 1).AddMonths(1);
-                while (birSonrakiAyinIlkPersembesi.DayOfWeek != DayOfWeek.Thursday)
-                {
-                    birSonrakiAyinIlkPersembesi = birSonrakiAyinIlkPersembesi.AddDays(1);
-                }
-                birSonrakiAyinIlkPersembesi = birSonrakiAyinIlkPersembesi.AddHours(22);
-                _nextUpdateTimestamp = new DateTimeOffset(birSonrakiAyinIlkPersembesi).ToUnixTimeSeconds();
+                DateTime NextMonthFirstThursday = new DateTime(Today.Year, Today.Month, 1).AddMonths(1);
+                while (NextMonthFirstThursday.DayOfWeek != DayOfWeek.Thursday) { NextMonthFirstThursday = NextMonthFirstThursday.AddDays(1); }
+                NextMonthFirstThursday = NextMonthFirstThursday.AddHours(DayTimeHour);
+                LogMessage($"[Responder] Sonraki Güncelleme Tarihi(UTC): {NextMonthFirstThursday}");
+                _nextUpdateTimestamp = new DateTimeOffset(NextMonthFirstThursday, TimeSpan.Zero).ToUnixTimeSeconds();
             }
             else
             {
-                DateTime buAyinIlkPersembesi = new DateTime(bugun.Year, bugun.Month, 1);
-                while (buAyinIlkPersembesi.DayOfWeek != DayOfWeek.Thursday)
-                {
-                    buAyinIlkPersembesi = buAyinIlkPersembesi.AddDays(1);
-                }
-                buAyinIlkPersembesi = buAyinIlkPersembesi.AddHours(22);
-                _nextUpdateTimestamp = new DateTimeOffset(buAyinIlkPersembesi).ToUnixTimeSeconds();
+                DateTime ThisMonthFirstThursday = new DateTime(Today.Year, Today.Month, 1);
+                while (ThisMonthFirstThursday.DayOfWeek != DayOfWeek.Thursday) { ThisMonthFirstThursday = ThisMonthFirstThursday.AddDays(1); }
+                ThisMonthFirstThursday = ThisMonthFirstThursday.AddHours(DayTimeHour);
+                LogMessage($"[Responder] Sonraki Güncelleme Tarihi(UTC): {ThisMonthFirstThursday}");
+                _nextUpdateTimestamp = new DateTimeOffset(ThisMonthFirstThursday, TimeSpan.Zero).ToUnixTimeSeconds();
             }
-            DateTimeOffset dateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(_nextUpdateTimestamp);
-            DateTime dateTime = dateTimeOffset.DateTime;
-            LogMessage($"[Responder] Sonraki Güncelleme Tarihi: {dateTime}");
+
+            DateTimeOffset LocalTimeOffset = DateTimeOffset.FromUnixTimeSeconds(_nextUpdateTimestamp);
+            DateTime LocalTime = LocalTimeOffset.LocalDateTime;
+            LogMessage($"[Responder] Sonraki Güncelleme Tarihi(Local): {LocalTime}");
         }
 
         private List<string> blacklistedkeywordList = new List<string>
