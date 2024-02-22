@@ -27,11 +27,13 @@ namespace RustTurkiye_Responder
         private static HashSet<string> storedCommits = new HashSet<string>();
         private static HashSet<string> sentCommits = new HashSet<string>();
 
-        private static int maxCommits = 2000;
-        private static int keepLatestCommits = 200;
+        private static int maxCommits = 5000;
+        private static int keepLatestCommits = 500;
 
         private static string EnSonOyun = "";
         private static string EnSonSunucu = "";
+
+        private static DateTime startTime;
 
         private static void Main(string[] args)
         {
@@ -145,6 +147,8 @@ namespace RustTurkiye_Responder
                 await Task.Delay(100);
             }
 
+            startTime = DateTime.Now;
+
             ResponderRunner_Elapse();
 
             System.Timers.Timer ResponderRunner = new System.Timers.Timer(60000); // 1 dakikada bir cevap güncelle
@@ -174,15 +178,15 @@ namespace RustTurkiye_Responder
             return Task.CompletedTask;
         }
 
-        private static DateTime startTime;
-
         private void RunTimeChecker_Elapse()
         {
             TimeSpan elapsed = DateTime.Now - startTime;
+
             int days = elapsed.Days;
             int hours = elapsed.Hours;
             int minutes = elapsed.Minutes;
             int seconds = elapsed.Seconds;
+
             if (seconds == 59)
             {
                 seconds = 0;
@@ -200,6 +204,7 @@ namespace RustTurkiye_Responder
                     }
                 }
             }
+
             Console.Title = $"RT_Kontrol - Running for {days} Day | {hours:D2}:{minutes:D2}:{seconds:D2}";
         }
 
