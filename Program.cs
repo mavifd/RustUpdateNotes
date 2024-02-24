@@ -9,36 +9,110 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 
-namespace RustTurkiye_Responder
+namespace RT_Control
 {
     internal class Program
     {
-        private DiscordSocketClient _client;
-        private ulong _SohbetKanalID = 448607745122369536;
-        private ulong _KlanAramaKanalID = 448441303043145729;
-        private ulong _CommitKanalID = 1134966799876763658;
-        private ulong _UpdateKanalID = 473843211954028544;
+        private static string token = "MTExMTAxNjg2MDc0NjUzMDgzNg.G5Tmp_.pk-mcC5NNneSCwWOZuvFwOzovem4rieLdLKT3k";
+        private static DiscordSocketClient _client;
 
-        private long _nextUpdateTimestamp = 0;
+        private static ulong _SohbetKanalID = 448607745122369536;
+        private static ulong _CommitKanalID = 1134966799876763658;
+        private static ulong _UpdateKanalID = 473843211954028544;
 
-        private static HttpClient httpClient = new HttpClient();
+        private static readonly HttpClient httpClient = new HttpClient();
         private static string apiUrl = "https://commits.facepunch.com/r/rust_reboot/?format=json";
 
         private static HashSet<string> storedCommits = new HashSet<string>();
         private static HashSet<string> sentCommits = new HashSet<string>();
 
-        private static int maxCommits = 5000;
-        private static int keepLatestCommits = 500;
-
         private static string EnSonOyun = "";
         private static string EnSonSunucu = "";
 
-        private static DateTime startTime;
+        private static long _nextUpdateTimestamp = 0;
+
+        private static bool _botReady = false;
+
+        private static List<string> updateKeywords = new List<string>
+        {
+            "wipe",
+            "güncelleme",
+            "global",
+            "update"
+        };
+
+        public class CommitData
+        {
+            public List<Commit> Results { get; set; }
+        }
+
+        public class Commit
+        {
+            public int id { get; set; }
+            public string repo { get; set; }
+            public string branch { get; set; }
+            public string changeset { get; set; }
+            public DateTime created { get; set; }
+            public string message { get; set; }
+            public User user { get; set; }
+        }
+
+        public class User
+        {
+            public string name { get; set; }
+            public string avatar { get; set; }
+        }
 
         private static void Main(string[] args)
         {
-            Console.Title = "RT_Kontrol - Starting...";
+            new Program().MainAsync().GetAwaiter().GetResult();
+        }
 
+        public async Task MainAsync()
+        {
+            Console.Title = "RT_Control";
+
+            LogMessage("Starting...");
+
+            var config = new DiscordSocketConfig
+            {
+                GatewayIntents = GatewayIntents.All
+            };
+
+            _client = new DiscordSocketClient(config);
+
+            _client.Log += Log;
+
+            _client.MessageReceived += MessageReceived;
+
+            _client.Ready += BotReady;
+
+            await _client.LoginAsync(TokenType.Bot, token);
+            await _client.StartAsync();
+
+            while (!_botReady) { await Task.Delay(100); }
+
+            LogMessage("Start done!");
+
+            LogMessage("Initialize update checker...");
+
+            await Task.Run(Initialize_UpdateChecker);
+
+            LogMessage("Initialize update checker done!");
+
+            LogMessage("Starting tasks...");
+
+            _ = Task.Run(ResponderRunner);
+            _ = Task.Run(CommitTracker);
+            _ = Task.Run(UpdateChecker);
+
+            LogMessage("Starting tasks done!");
+
+            await Task.Delay(-1);
+        }
+
+        private static async Task Initialize_UpdateChecker()
+        {
             LogMessage("[UpdateChecker] SteamCMD kontrol ediliyor...");
             if (File.Exists("C:\\steamcmd\\steamcmd.exe"))
             {
@@ -51,7 +125,7 @@ namespace RustTurkiye_Responder
                 Console.ForegroundColor = ConsoleColor.Red;
                 LogMessage("[UpdateChecker] SteamCMD bulunamadı.");
                 Console.ResetColor();
-                Task.Delay(5000);
+                await Task.Delay(5000);
                 Environment.Exit(1);
             }
 
@@ -65,8 +139,8 @@ namespace RustTurkiye_Responder
                 Console.ForegroundColor = ConsoleColor.Green;
                 LogMessage("[UpdateChecker] Script dosyası içeriği oluşturuluyor.");
                 Console.ResetColor();
-                File.WriteAllText("scripts\\rustapp.txt", RT_Kontrol.Properties.Resources.rustapp);
-                File.WriteAllText("scripts\\rustserver.txt", RT_Kontrol.Properties.Resources.rustserver);
+                File.WriteAllText("scripts\\rustapp.txt", Properties.Resources.rustapp);
+                File.WriteAllText("scripts\\rustserver.txt", Properties.Resources.rustserver);
             }
             else
             {
@@ -76,8 +150,8 @@ namespace RustTurkiye_Responder
                     Console.ForegroundColor = ConsoleColor.Green;
                     LogMessage("[UpdateChecker] Script dosyası içeriği oluşturuluyor.");
                     Console.ResetColor();
-                    File.WriteAllText("scripts\\rustapp.txt", RT_Kontrol.Properties.Resources.rustapp);
-                    File.WriteAllText("scripts\\rustserver.txt", RT_Kontrol.Properties.Resources.rustserver);
+                    File.WriteAllText("scripts\\rustapp.txt", Properties.Resources.rustapp);
+                    File.WriteAllText("scripts\\rustserver.txt", Properties.Resources.rustserver);
                 }
                 else
                 {
@@ -97,11 +171,11 @@ namespace RustTurkiye_Responder
 
             while (true)
             {
-                EnSonOyun = GetRustVersionAsync("rustapp.txt").Result;
+                EnSonOyun = await GetRustVersionAsync("rustapp.txt");
 
                 LogMessage($"[UpdateChecker] Oyun Başlangıç Değeri: {EnSonOyun}");
 
-                EnSonSunucu = GetRustVersionAsync("rustserver.txt").Result;
+                EnSonSunucu = await GetRustVersionAsync("rustserver.txt");
 
                 LogMessage($"[UpdateChecker] Sunucu Başlangıç Değeri: {EnSonSunucu}");
 
@@ -119,122 +193,53 @@ namespace RustTurkiye_Responder
 
             Console.ResetColor();
             LogMessage("[UpdateChecker] Döngüye giriliyor...");
-
-            new Program().RunBotAsync().GetAwaiter().GetResult();
         }
 
-        public async Task RunBotAsync()
+        private static async Task ResponderRunner()
         {
-            var config = new DiscordSocketConfig
+            while (true)
             {
-                GatewayIntents = GatewayIntents.All
-            };
-
-            _client = new DiscordSocketClient(config);
-
-            _client.Log += Log;
-
-            await _client.LoginAsync(TokenType.Bot, "MTExMTAxNjg2MDc0NjUzMDgzNg.G5Tmp_.pk-mcC5NNneSCwWOZuvFwOzovem4rieLdLKT3k");
-
-            await _client.StartAsync();
-
-            _client.MessageReceived += MessageReceived;
-
-            _client.Ready += BotReady;
-
-            while (!_botReady)
-            {
-                await Task.Delay(100);
+                await ResponderUpdate();
+                await Task.Delay(TimeSpan.FromMinutes(1));
             }
-
-            startTime = DateTime.Now;
-
-            ResponderRunner_Elapse();
-
-            System.Timers.Timer ResponderRunner = new System.Timers.Timer(60000); // 1 dakikada bir cevap güncelle
-            ResponderRunner.Elapsed += (sender, e) => ResponderRunner_Elapse();
-            ResponderRunner.Start();
-
-            System.Timers.Timer CommitTrackRunner = new System.Timers.Timer(30000); // 1 dakikada bir commit kontrol et
-            CommitTrackRunner.Elapsed += (sender, e) => CommitTrack_Elapse();
-            CommitTrackRunner.Start();
-
-            System.Timers.Timer UpdateCheckRunner = new System.Timers.Timer(1000); // güncellemeyi mümkün olduğu sürece kontrol et
-            UpdateCheckRunner.Elapsed += (sender, e) => UpdateCheck_Elapse();
-            UpdateCheckRunner.Start();
-
-            System.Timers.Timer RunTimeChecker = new System.Timers.Timer(1000); // güncellemeyi mümkün olduğu sürece kontrol et
-            RunTimeChecker.Elapsed += (sender, e) => RunTimeChecker_Elapse();
-            RunTimeChecker.Start();
-
-            await Task.Delay(-1);
         }
 
-        private bool _botReady = false;
-
-        private Task BotReady()
+        private static async Task CommitTracker()
         {
-            _botReady = true;
-            return Task.CompletedTask;
-        }
-
-        private void RunTimeChecker_Elapse()
-        {
-            TimeSpan elapsed = DateTime.Now - startTime;
-
-            int days = elapsed.Days;
-            int hours = elapsed.Hours;
-            int minutes = elapsed.Minutes;
-            int seconds = elapsed.Seconds;
-
-            if (seconds == 59)
+            while (true)
             {
-                seconds = 0;
-                minutes++;
-
-                if (minutes == 60)
-                {
-                    minutes = 0;
-                    hours++;
-
-                    if (hours == 24)
-                    {
-                        hours = 0;
-                        days++;
-                    }
-                }
+                await CheckForNewCommits();
+                await Task.Delay(TimeSpan.FromMinutes(1));
             }
-
-            Console.Title = $"RT_Kontrol - Running for {days} Day | {hours:D2}:{minutes:D2}:{seconds:D2}";
         }
 
-        private static readonly object fileLock = new object();
-
-        private void UpdateCheck_Elapse()
+        private static async Task UpdateChecker()
         {
-            lock (fileLock)
+            while (true)
             {
-                string mevcutOyun = GetRustVersionAsync("rustapp.txt").Result;
+                string mevcutOyun = await GetRustVersionAsync("rustapp.txt");
 
                 LogMessage($"[UpdateChecker] Oyun Mevcut Sürüm: {mevcutOyun}");
 
-                string mevcutSunucu = GetRustVersionAsync("rustserver.txt").Result;
+                string mevcutSunucu = await GetRustVersionAsync("rustserver.txt");
 
                 LogMessage($"[UpdateChecker] Sunucu Mevcut Sürüm: {mevcutSunucu}");
 
-                CheckAndUpdateVersion(
-                   EnSonOyun,
-                   mevcutOyun,
-                   ":radioactive: **Oyuncular için yeni bir Güncelleme geldi!** :radioactive:",
-                   "Güncellemeyi görmüyorsanız, Steaminizi yeniden başlatın.",
-                   false);
+                await CheckAndUpdateVersion(
+                    EnSonOyun,
+                    mevcutOyun,
+                    ":radioactive: **Oyuncular için yeni bir Güncelleme geldi!** :radioactive:",
+                    "Güncellemeyi görmüyorsanız, Steaminizi yeniden başlatın.",
+                    false);
 
-                CheckAndUpdateVersion(
+                await CheckAndUpdateVersion(
                    EnSonSunucu,
                    mevcutSunucu,
                    ":radioactive: **Sunucular için yeni bir Güncelleme geldi!** :radioactive:",
                    "Sunucu sahipleri, sunucularını güncelleyebilir.",
                    true);
+
+                await Task.Delay(TimeSpan.FromSeconds(1));
             }
         }
 
@@ -272,12 +277,12 @@ namespace RustTurkiye_Responder
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[UpdateChecker] Genel Hata: {ex.Message}");
+                LogMessage($"[UpdateChecker] Genel Hata: {ex.Message}");
                 return "not valid";
             }
         }
 
-        private async void CheckAndUpdateVersion(string MainVersion, string CurrentVersion, string message, string description, bool server)
+        private static async Task CheckAndUpdateVersion(string MainVersion, string CurrentVersion, string message, string description, bool server)
         {
             if (IsValidVersion(CurrentVersion) && CurrentVersion != MainVersion)
             {
@@ -304,12 +309,7 @@ namespace RustTurkiye_Responder
             return version != null && version.Length == 8 && int.TryParse(version, out _);
         }
 
-        private async void CommitTrack_Elapse()
-        {
-            await CheckForNewCommits();
-        }
-
-        private async Task CheckForNewCommits()
+        private static async Task CheckForNewCommits()
         {
             try
             {
@@ -319,26 +319,6 @@ namespace RustTurkiye_Responder
                 if (commitData?.Results.Count() != null)
                 {
                     var newCommits = commitData.Results.Select(commit => commit.message).ToList();
-
-                    if (storedCommits.Count >= maxCommits)
-                    {
-                        var oldestCommits = storedCommits.Take(storedCommits.Count - keepLatestCommits).ToList();
-                        LogMessage("[CommitTracker] Eski veriler (stored) siliniyor.");
-                        foreach (var commit in oldestCommits)
-                        {
-                            storedCommits.Remove(commit);
-                        }
-                    }
-
-                    if (sentCommits.Count >= maxCommits)
-                    {
-                        var oldestCommits = sentCommits.Take(sentCommits.Count - keepLatestCommits).ToList();
-                        LogMessage("[CommitTracker] Eski veriler (sended) siliniyor.");
-                        foreach (var commit in oldestCommits)
-                        {
-                            sentCommits.Remove(commit);
-                        }
-                    }
 
                     if (storedCommits.Count == 0)
                     {
@@ -384,7 +364,7 @@ namespace RustTurkiye_Responder
             }
         }
 
-        private void ResponderRunner_Elapse()
+        private static Task ResponderUpdate()
         {
             int DayTimeHour = 19; //18 YAZ, 19 KIŞ.
             DateTime Today = DateTime.Today;
@@ -400,7 +380,6 @@ namespace RustTurkiye_Responder
                 DateTime NextMonthFirstThursday = new DateTime(Today.Year, Today.Month, 1).AddMonths(1);
                 while (NextMonthFirstThursday.DayOfWeek != DayOfWeek.Thursday) { NextMonthFirstThursday = NextMonthFirstThursday.AddDays(1); }
                 NextMonthFirstThursday = NextMonthFirstThursday.AddHours(DayTimeHour);
-                LogMessage($"[Responder] Sonraki Güncelleme Tarihi(UTC): {NextMonthFirstThursday}");
                 _nextUpdateTimestamp = new DateTimeOffset(NextMonthFirstThursday, TimeSpan.Zero).ToUnixTimeSeconds();
             }
             else
@@ -408,41 +387,22 @@ namespace RustTurkiye_Responder
                 DateTime ThisMonthFirstThursday = new DateTime(Today.Year, Today.Month, 1);
                 while (ThisMonthFirstThursday.DayOfWeek != DayOfWeek.Thursday) { ThisMonthFirstThursday = ThisMonthFirstThursday.AddDays(1); }
                 ThisMonthFirstThursday = ThisMonthFirstThursday.AddHours(DayTimeHour);
-                LogMessage($"[Responder] Sonraki Güncelleme Tarihi(UTC): {ThisMonthFirstThursday}");
                 _nextUpdateTimestamp = new DateTimeOffset(ThisMonthFirstThursday, TimeSpan.Zero).ToUnixTimeSeconds();
             }
 
             DateTimeOffset LocalTimeOffset = DateTimeOffset.FromUnixTimeSeconds(_nextUpdateTimestamp);
             DateTime LocalTime = LocalTimeOffset.LocalDateTime;
-            LogMessage($"[Responder] Sonraki Güncelleme Tarihi(Local): {LocalTime}");
+            LogMessage($"[Responder] Sonraki Güncelleme Tarihi: {LocalTime}");
+            return Task.CompletedTask;
         }
 
-        private List<string> blacklistedkeywordList = new List<string>
-        {
-            "istisna",
-            "sürtük",
-            "tüzük",
-            "zehir",
-            "temizle",
-            "iyi iletişim",
-            "silme"
-        };
-
-        private List<string> updatekeywordList = new List<string>
-        {
-            "wipe",
-            "güncelleme",
-            "global",
-            "update"
-        };
-
-        private Task MessageReceived(SocketMessage message)
+        private static Task MessageReceived(SocketMessage message)
         {
             if (message.Channel.Id == _SohbetKanalID)
             {
                 if (message.Author.Id != _client.CurrentUser.Id)
                 {
-                    if (updatekeywordList.Any(keyword => message.Content.ToLower().Contains(keyword)))
+                    if (updateKeywords.Any(keyword => message.Content.ToLower().Contains(keyword)))
                     {
                         LogMessage("[Responder] Güncelleme sorusu cevaplanıyor...");
 
@@ -463,35 +423,12 @@ namespace RustTurkiye_Responder
                     }
                 }
             }
+            return Task.CompletedTask;
+        }
 
-            if (message.Channel.Id == _KlanAramaKanalID)
-            {
-                if (message.Author.Id != _client.CurrentUser.Id)
-                {
-                    if (blacklistedkeywordList.Any(keyword => message.Content.ToLower().Contains(keyword)))
-                    {
-                        LogMessage("[Responder] Ceza veriliyor!");
-
-                        SocketGuildUser user = message.Author as SocketGuildUser;
-
-                        IRole roleToAssign = user.Guild.Roles.FirstOrDefault(x => x.Name == "CEZALI");
-
-                        if (roleToAssign != null)
-                        {
-                            user.AddRoleAsync(roleToAssign);
-                        }
-                        else
-                        {
-                            LogMessage("[Responder] Cezalı rolü verilemedi.");
-                        }
-
-                        LogMessage("[Responder] Mesaj siliniyor...");
-
-                        message.DeleteAsync();
-                    }
-                }
-            }
-
+        private Task BotReady()
+        {
+            _botReady = true;
             return Task.CompletedTask;
         }
 
@@ -506,28 +443,6 @@ namespace RustTurkiye_Responder
         {
             string logEntry = $"{DateTime.Now} | {message}";
             Console.WriteLine(logEntry);
-        }
-
-        public class CommitData
-        {
-            public List<Commit> Results { get; set; }
-        }
-
-        public class Commit
-        {
-            public int id { get; set; }
-            public string repo { get; set; }
-            public string branch { get; set; }
-            public string changeset { get; set; }
-            public DateTime created { get; set; }
-            public string message { get; set; }
-            public User user { get; set; }
-        }
-
-        public class User
-        {
-            public string name { get; set; }
-            public string avatar { get; set; }
         }
     }
 }
