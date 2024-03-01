@@ -1,9 +1,11 @@
 ﻿using Discord;
 using Discord.WebSocket;
+using HtmlAgilityPack;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -19,9 +21,11 @@ namespace RT_Control
         private static ulong _SohbetKanalID = 448607745122369536;
         private static ulong _CommitKanalID = 1134966799876763658;
         private static ulong _UpdateKanalID = 473843211954028544;
+        private static ulong _SkinKanalID = 1004983958104199218;
 
         private static readonly HttpClient httpClient = new HttpClient();
-        private static string apiUrl = "https://commits.facepunch.com/r/rust_reboot/?format=json";
+        private static string commitApiUrl = "https://commits.facepunch.com/r/rust_reboot/?format=json";
+        private static string skinApiUrl = "https://rustlabs.com/skins";
 
         private static HashSet<string> storedCommits = new HashSet<string>();
         private static HashSet<string> sentCommits = new HashSet<string>();
@@ -61,6 +65,17 @@ namespace RT_Control
         {
             public string name { get; set; }
             public string avatar { get; set; }
+        }
+
+        private static HashSet<string> storedSkins = new HashSet<string>();
+        private static HashSet<string> sentSkins = new HashSet<string>();
+
+        private class SkinItem
+        {
+            public string Name { get; set; }
+            public string Item { get; set; }
+            public string Price { get; set; }
+            public string Image { get; set; }
         }
 
         private static void Main(string[] args)
@@ -104,6 +119,7 @@ namespace RT_Control
 
             _ = Task.Run(ResponderRunner);
             _ = Task.Run(CommitTracker);
+            _ = Task.Run(SkinTracker);
             _ = Task.Run(UpdateChecker);
 
             LogMessage("Starting tasks done!");
@@ -213,6 +229,115 @@ namespace RT_Control
             }
         }
 
+        private static async Task SkinTracker()
+        {
+            while (true)
+            {
+                await CheckForNewSkins();
+                await Task.Delay(TimeSpan.FromMinutes(1));
+            }
+        }
+
+        private static async Task CheckForNewSkins()
+        {
+            try
+            {
+                var response = await httpClient.GetStringAsync(skinApiUrl);
+
+                if (response != null)
+                {
+                    List<SkinItem> skinData = ParseSkins(response);
+
+                    if (skinData != null)
+                    {
+                        var newSkins = skinData.Select(item => item.Name).ToList();
+
+                        if (storedSkins.Count == 0)
+                        {
+                            storedSkins.UnionWith(newSkins);
+                        }
+                        else
+                        {
+                            var differences = skinData.Where(skin => newSkins.Contains(skin.Name) && !storedSkins.Contains(skin.Name)).ToList();
+
+                            if (differences.Any())
+                            {
+                                var channel = _client.GetChannel(_SkinKanalID) as IMessageChannel;
+
+                                float totalcost = 0;
+                                foreach (var skins in skinData) { totalcost = totalcost + float.Parse(skins.Price, CultureInfo.InvariantCulture.NumberFormat); }
+                                var skincount = skinData.Count;
+
+                                LogMessage($"[SkinTracker] Mağaza Yenilendi --> {skincount} yeni kostüm. Toplam Kostüm Değeri: {totalcost}$");
+
+                                EmbedBuilder embedBuildformain = new EmbedBuilder();
+                                embedBuildformain.WithTitle(":bell: MAĞAZA YENİLENDİ! | " + DateTime.Now.ToShortDateString() + " :bell:");
+                                embedBuildformain.WithColor(Color.Blue);
+                                embedBuildformain.WithDescription($"**{skincount}** yeni kostüm mağazaye eklendi. \n\n Toplam Kostüm Değeri: **{totalcost}$**");
+                                embedBuildformain.WithUrl("https://store.steampowered.com/itemstore/252490/");
+                                embedBuildformain.WithFooter(DateTime.Now.ToString(), "https://cdn.discordapp.com/attachments/1060075799081918516/1177909719772434432/logo.png?ex=657438e9&is=6561c3e9&hm=b17bd3166e83f5173abc9bca58df513f85e71ed445a1caf41a3429289ec78aa2&");
+                                await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
+
+                                foreach (var skins in skinData)
+                                {
+                                    sentSkins.Add(skins.Name);
+                                    LogMessage($"[SkinTracker] Yeni Skin --> {skins.Name}");
+                                    EmbedBuilder embedBuilder = new EmbedBuilder();
+                                    embedBuilder.WithTitle($"{skins.Name} - {skins.Price}$");
+                                    embedBuilder.WithUrl("https://store.steampowered.com/itemstore/252490");
+                                    embedBuilder.WithImageUrl("https://" + skins.Image);
+                                    embedBuilder.WithFooter("Item Type: " + skins.Item);
+                                    await channel.SendMessageAsync("", false, embedBuilder.Build());
+                                }
+                            }
+                            storedSkins.UnionWith(newSkins);
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("[SkinTracker] SkinData null.");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("[SkinTracker] Response null.");
+                }
+
+                LogMessage($"[SkinTracker] Depolanan: {storedSkins.Count} - Gönderilen: {sentSkins.Count}");
+            }
+            catch (Exception ex)
+            {
+                LogMessage($"[SkinTracker] Hata oluştu: {ex.Message}");
+            }
+        }
+
+        private static List<SkinItem> ParseSkins(string html)
+        {
+            List<SkinItem> skinItems = new List<SkinItem>();
+
+            HtmlDocument doc = new HtmlDocument();
+            doc.LoadHtml(html);
+
+            var linkNodes = doc.DocumentNode.SelectNodes("//a");
+
+            if (linkNodes != null)
+            {
+                for (int i = 0; i < Math.Min(21, linkNodes.Count); i++)
+                {
+                    var linkNode = linkNodes[i];
+                    SkinItem skinItem = new SkinItem();
+                    skinItem.Name = linkNode.GetAttributeValue("data-name", "");
+                    skinItem.Item = linkNode.GetAttributeValue("data-item", "");
+                    skinItem.Price = linkNode.GetAttributeValue("data-price", "");
+                    var imgNode = linkNode.SelectSingleNode(".//img");
+                    if (imgNode != null) skinItem.Image = imgNode.GetAttributeValue("data-src", "").TrimStart('/');
+                    if (skinItem.Name != null && skinItem.Item != null && skinItem.Price != null && skinItem.Image != null) skinItems.Add(skinItem);
+                }
+            }
+
+            return skinItems;
+        }
+
         private static async Task UpdateChecker()
         {
             while (true)
@@ -313,7 +438,7 @@ namespace RT_Control
         {
             try
             {
-                var response = await httpClient.GetStringAsync(apiUrl);
+                var response = await httpClient.GetStringAsync(commitApiUrl);
                 var commitData = JsonConvert.DeserializeObject<CommitData>(response);
 
                 if (commitData?.Results.Count() != null)
@@ -334,9 +459,8 @@ namespace RT_Control
                             {
                                 sentCommits.Add(commit.message);
                                 LogMessage($"[CommitTracker] Yeni yorum --> {commit.message}");
-
                                 EmbedBuilder embedBuilder = new EmbedBuilder();
-                                embedBuilder.WithTitle(commit.user.name + "\n" + commit.branch);
+                                embedBuilder.WithTitle($"{commit.user.name} \n {commit.branch}");
                                 embedBuilder.WithDescription(commit.message);
                                 embedBuilder.WithColor(Color.Blue);
                                 embedBuilder.WithThumbnailUrl(commit.user.avatar);
