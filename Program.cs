@@ -22,6 +22,7 @@ namespace RT_Control
         private static ulong _CommitKanalID = 1134966799876763658;
         private static ulong _UpdateKanalID = 473843211954028544;
         private static ulong _SkinKanalID = 1004983958104199218;
+        private static ulong _KlanAramaKanalID = 448441303043145729;
 
         private static readonly HttpClient httpClient = new HttpClient();
         private static string commitApiUrl = "https://commits.facepunch.com/r/rust_reboot/?format=json";
@@ -43,6 +44,17 @@ namespace RT_Control
             "güncelleme",
             "global",
             "update"
+        };
+
+        private static List<string> blacklistedKeywords = new List<string>
+        {
+            "istisna",
+            "sürtük",
+            "tüzük",
+            "zehir",
+            "temizle",
+            "iyi iletişim",
+            "silme"
         };
 
         public class CommitData
@@ -546,6 +558,31 @@ namespace RT_Control
                         return message.Channel.SendMessageAsync("", false, embedBuilder.Build());
                     }
                 }
+            }
+
+            if (message.Channel.Id == _KlanAramaKanalID)
+            {
+                if (message.Author.Id != _client.CurrentUser.Id)
+                {
+                    if (blacklistedKeywords.Any(keyword => message.Content.ToLower().Contains(keyword)))
+                    {
+                        SocketGuildUser socketguser = message.Author as SocketGuildUser;
+                        IRole roleToAssign = socketguser.Guild.Roles.FirstOrDefault(x => x.Name == "CEZALI");
+                        LogMessage("[Responder] Ceza veriliyor!");
+                        if (roleToAssign != null) socketguser.AddRoleAsync(roleToAssign);
+                        else LogMessage("[Responder] Cezalı rolü verilemedi.");
+                        LogMessage("[Responder] Mesaj siliniyor...");
+                        message.DeleteAsync();
+                    }
+                }
+
+                string[] satirlar = message.Content.Split('\n');
+                int bosSatirSayisi = 0;
+                foreach (string satir in satirlar) { if (string.IsNullOrWhiteSpace(satir)) bosSatirSayisi++; }
+
+                if (satirlar.Length > 10) { LogMessage("[Responder] Mesaj 10 satırdan uzun. siliniyor..."); return message.DeleteAsync(); }
+                if (bosSatirSayisi > 2) { LogMessage("[Responder] Mesaj 2'den fazla boş satır içeriyor. siliniyor..."); return message.DeleteAsync(); }
+                if (message.Content.Contains("```")) { LogMessage("[Responder] Mesaj kod satırı içeriyor. siliniyor..."); return message.DeleteAsync(); }
             }
             return Task.CompletedTask;
         }
