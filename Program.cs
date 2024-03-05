@@ -584,29 +584,29 @@ namespace RT_Control
                 if (satirlar.Length > 10)
                 {
                     LogMessage("[Responder] Mesaj 10 satırdan uzun. siliniyor...");
-                    string sndmsg = userTag + " mesajınız klan arama/alım kanalı kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız 10 satırdan uzun olamaz.";
-                    message.Channel.SendMessageAsync(sndmsg);
+                    string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız 10 satırdan uzun olamaz.";
+                    user.SendMessageAsync(sndmsg);
                     return message.DeleteAsync();
                 }
                 if (bosSatirSayisi > 2)
                 {
                     LogMessage("[Responder] Mesaj 2'den fazla boş satır içeriyor. siliniyor...");
-                    string sndmsg = userTag + " mesajınız klan arama/alım kanalı kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız 2'den fazla boş satır içeremez.";
-                    message.Channel.SendMessageAsync(sndmsg);
+                    string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız 2'den fazla boş satır içeremez.";
+                    user.SendMessageAsync(sndmsg);
                     return message.DeleteAsync();
                 }
                 if (message.Content.Contains("```"))
                 {
                     LogMessage("[Responder] Mesaj kod satırı içeriyor. siliniyor...");
-                    string sndmsg = userTag + " mesajınız klan arama/alım kanalı kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız kod satırı içeremez.";
-                    message.Channel.SendMessageAsync(sndmsg);
+                    string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız kod formatı içeremez.";
+                    user.SendMessageAsync(sndmsg);
                     return message.DeleteAsync();
                 }
                 if (message.Content.Contains("# ") || message.Content.Contains("## ")|| message.Content.Contains("### "))
                 {
                     LogMessage("[Responder] Mesaj başlık içeriyor. siliniyor...");
-                    string sndmsg = userTag + " mesajınız klan arama/alım kanalı kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız başlık içeremez.";
-                    message.Channel.SendMessageAsync(sndmsg);
+                    string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız başlık formatı içeremez.";
+                    user.SendMessageAsync(sndmsg);
                     return message.DeleteAsync();
                 }
             }
