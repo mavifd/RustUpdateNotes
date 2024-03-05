@@ -534,6 +534,10 @@ namespace RT_Control
 
         private static Task MessageReceived(SocketMessage message)
         {
+
+            IUser user = message.Author;
+            string userTag = $"{user.Mention}";
+
             if (message.Channel.Id == _SohbetKanalID)
             {
                 if (message.Author.Id != _client.CurrentUser.Id)
@@ -541,10 +545,6 @@ namespace RT_Control
                     if (updateKeywords.Any(keyword => message.Content.ToLower().Contains(keyword)))
                     {
                         LogMessage("[Responder] Güncelleme sorusu cevaplanıyor...");
-
-                        IUser user = message.Author;
-                        string userTag = $"{user.Mention}";
-
                         EmbedBuilder embedBuilder = new EmbedBuilder();
                         embedBuilder.WithTitle(":information_source:  **Güncelleme Bilgisi**  :information_source:");
                         embedBuilder.WithDescription("`Her ayın ilk perşembesi (Yaz Dönemi 21:00 - Kış Dönemi 22:00) gelen güncelleme ile tüm sunuculara` ***Zorunlu Harita Sıfırlaması*** `atılır. BP Sıfırlaması ise sunucu sahibinin isteğine bağlıdır.` ");
@@ -580,9 +580,35 @@ namespace RT_Control
                 int bosSatirSayisi = 0;
                 foreach (string satir in satirlar) { if (string.IsNullOrWhiteSpace(satir)) bosSatirSayisi++; }
 
-                if (satirlar.Length > 10) { LogMessage("[Responder] Mesaj 10 satırdan uzun. siliniyor..."); return message.DeleteAsync(); }
-                if (bosSatirSayisi > 2) { LogMessage("[Responder] Mesaj 2'den fazla boş satır içeriyor. siliniyor..."); return message.DeleteAsync(); }
-                if (message.Content.Contains("```")) { LogMessage("[Responder] Mesaj kod satırı içeriyor. siliniyor..."); return message.DeleteAsync(); }
+                satirlar.Count();
+                if (satirlar.Length > 10)
+                {
+                    LogMessage("[Responder] Mesaj 10 satırdan uzun. siliniyor...");
+                    string sndmsg = userTag + " mesajınız klan arama/alım kanalı kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız 10 satırdan uzun olamaz.";
+                    message.Channel.SendMessageAsync(sndmsg);
+                    return message.DeleteAsync();
+                }
+                if (bosSatirSayisi > 2)
+                {
+                    LogMessage("[Responder] Mesaj 2'den fazla boş satır içeriyor. siliniyor...");
+                    string sndmsg = userTag + " mesajınız klan arama/alım kanalı kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız 2'den fazla boş satır içeremez.";
+                    message.Channel.SendMessageAsync(sndmsg);
+                    return message.DeleteAsync();
+                }
+                if (message.Content.Contains("```"))
+                {
+                    LogMessage("[Responder] Mesaj kod satırı içeriyor. siliniyor...");
+                    string sndmsg = userTag + " mesajınız klan arama/alım kanalı kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız kod satırı içeremez.";
+                    message.Channel.SendMessageAsync(sndmsg);
+                    return message.DeleteAsync();
+                }
+                if (message.Content.Contains("# ") || message.Content.Contains("## ")|| message.Content.Contains("### "))
+                {
+                    LogMessage("[Responder] Mesaj başlık içeriyor. siliniyor...");
+                    string sndmsg = userTag + " mesajınız klan arama/alım kanalı kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız başlık içeremez.";
+                    message.Channel.SendMessageAsync(sndmsg);
+                    return message.DeleteAsync();
+                }
             }
             return Task.CompletedTask;
         }
