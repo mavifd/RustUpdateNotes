@@ -9,6 +9,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace RT_Control
@@ -20,13 +21,13 @@ namespace RT_Control
 
         private static ulong _SohbetKanalID = 448607745122369536;
         private static ulong _CommitKanalID = 1134966799876763658;
-        private static ulong _UpdateKanalID = 473843211954028544;
+        private static ulong _UpdateKanalID = 1215681953869864991;
         private static ulong _SkinKanalID = 1004983958104199218;
         private static ulong _KlanAramaKanalID = 448441303043145729;
 
         private static readonly HttpClient httpClient = new HttpClient();
         private static string commitApiUrl = "https://commits.facepunch.com/r/rust_reboot/?format=json";
-        private static string skinApiUrl = "https://rustlabs.com/skins";
+        private static string skinApiUrl = "https://rust.scmm.app/store";
 
         private static HashSet<string> storedCommits = new HashSet<string>();
         private static HashSet<string> sentCommits = new HashSet<string>();
@@ -228,7 +229,7 @@ namespace RT_Control
             while (true)
             {
                 await ResponderUpdate();
-                await Task.Delay(TimeSpan.FromMinutes(1));
+                await Task.Delay(TimeSpan.FromMinutes(5));
             }
         }
 
@@ -323,6 +324,19 @@ namespace RT_Control
             }
         }
 
+        private static List<string> ExtractImageUrlsStartingWith(string html)
+        {
+            List<string> imageUrls = new List<string>();
+            string pattern = @"<img.*?src=""(.*?)"".*?>";
+            MatchCollection matches = Regex.Matches(html, pattern, RegexOptions.IgnoreCase);
+            foreach (Match match in matches)
+            {
+                string src = match.Groups[1].Value;
+                if (!src.StartsWith("https://avatars", StringComparison.OrdinalIgnoreCase) && src.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) imageUrls.Add(src);
+            }
+            return imageUrls;
+        }
+
         private static List<SkinItem> ParseSkins(string html)
         {
             List<SkinItem> skinItems = new List<SkinItem>();
@@ -330,23 +344,33 @@ namespace RT_Control
             HtmlDocument doc = new HtmlDocument();
             doc.LoadHtml(html);
 
-            var linkNodes = doc.DocumentNode.SelectNodes("//a");
+            var storeItems = doc.DocumentNode.SelectNodes("//div[@class='store-item full-height']");
+            List<string> imageUrls = ExtractImageUrlsStartingWith(html);
 
-            if (linkNodes != null)
+            if (storeItems != null)
             {
-                for (int i = 0; i < Math.Min(21, linkNodes.Count); i++)
+                if (imageUrls.Count >= storeItems.Count)
                 {
-                    var linkNode = linkNodes[i];
-                    SkinItem skinItem = new SkinItem();
-                    skinItem.Name = linkNode.GetAttributeValue("data-name", "");
-                    skinItem.Item = linkNode.GetAttributeValue("data-item", "");
-                    skinItem.Price = linkNode.GetAttributeValue("data-price", "");
-                    var imgNode = linkNode.SelectSingleNode(".//img");
-                    if (imgNode != null) skinItem.Image = imgNode.GetAttributeValue("data-src", "").TrimStart('/');
-                    if (skinItem.Name != null && skinItem.Item != null && skinItem.Price != null && skinItem.Image != null) skinItems.Add(skinItem);
+                    for (int i = 0; i < storeItems.Count; i++)
+                    {
+                        var storeItem = storeItems[i];
+                        var imageUrl = imageUrls[i];
+
+                        SkinItem skinItem = new SkinItem();
+
+                        var nameNode = storeItem.SelectSingleNode(".//h6[@class='mud-typography mud-typography-h6']");
+                        var itemTypeNode = storeItem.SelectSingleNode(".//h6[@class='mud-typography mud-typography-subtitle1 mud-secondary-text']");
+                        var priceNode = storeItem.SelectSingleNode(".//h6[@class='mud-typography mud-typography-h6 no-wrap']");
+
+                        if (nameNode != null) skinItem.Name = nameNode.InnerText.Trim();
+                        if (itemTypeNode != null) skinItem.Item = itemTypeNode.InnerText.Trim();
+                        if (priceNode != null) skinItem.Price = priceNode.SelectSingleNode(".//span")?.InnerText.Trim();
+                        skinItem.Image = imageUrl;
+
+                        skinItems.Add(skinItem);
+                    }
                 }
             }
-
             return skinItems;
         }
 
@@ -428,13 +452,15 @@ namespace RT_Control
 
                 LogMessage($"{message} [{CurrentVersion}]");
 
+                string changenumber_t = MainVersion + "-->" + CurrentVersion;
+
                 EmbedBuilder embedBuilder = new EmbedBuilder();
                 embedBuilder.WithTitle(message);
                 embedBuilder.WithDescription(description);
                 embedBuilder.WithColor(Color.Blue);
                 embedBuilder.WithThumbnailUrl("https://yt3.googleusercontent.com/ytc/AL5GRJUOzRJWMKDaDQdJVVsXHCBcWQsOZYe3YZOfTj1k=s176-c-k-c0x00ffffff-no-rj-mo");
                 embedBuilder.WithFooter(DateTime.Now.ToString(), "https://cdn.discordapp.com/attachments/1060075799081918516/1177909719772434432/logo.png?ex=657438e9&is=6561c3e9&hm=b17bd3166e83f5173abc9bca58df513f85e71ed445a1caf41a3429289ec78aa2&");
-                embedBuilder.AddField("Yeni Sürüm Numarası", CurrentVersion, true); ;
+                embedBuilder.AddField("Sürüm Numarası Değişimi:", changenumber_t, true); ;
 
                 var channel = _client.GetChannel(_UpdateKanalID) as IMessageChannel;
                 await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
@@ -477,8 +503,8 @@ namespace RT_Control
                                 embedBuilder.WithColor(Color.Blue);
                                 embedBuilder.WithThumbnailUrl(commit.user.avatar);
                                 embedBuilder.WithFooter(DateTime.Now.ToString(), "https://cdn.discordapp.com/attachments/1060075799081918516/1177909719772434432/logo.png?ex=657438e9&is=6561c3e9&hm=b17bd3166e83f5173abc9bca58df513f85e71ed445a1caf41a3429289ec78aa2&");
-                                embedBuilder.AddField("ID", commit.id, true);
-                                embedBuilder.AddField("ChangeSet", commit.changeset, true);
+                                embedBuilder.AddField("ID:", commit.id, true);
+                                embedBuilder.AddField("ChangeSet:", commit.changeset, true);
 
                                 var channel = _client.GetChannel(_CommitKanalID) as IMessageChannel;
                                 await channel.SendMessageAsync("", false, embedBuilder.Build());
@@ -534,7 +560,6 @@ namespace RT_Control
 
         private static Task MessageReceived(SocketMessage message)
         {
-
             IUser user = message.Author;
             string userTag = $"{user.Mention}";
 
@@ -547,11 +572,11 @@ namespace RT_Control
                         LogMessage("[Responder] Güncelleme sorusu cevaplanıyor...");
                         EmbedBuilder embedBuilder = new EmbedBuilder();
                         embedBuilder.WithTitle(":information_source:  **Güncelleme Bilgisi**  :information_source:");
-                        embedBuilder.WithDescription("`Her ayın ilk perşembesi (Yaz Dönemi 21:00 - Kış Dönemi 22:00) gelen güncelleme ile tüm sunuculara` ***Zorunlu Harita Sıfırlaması*** `atılır. BP Sıfırlaması ise sunucu sahibinin isteğine bağlıdır.` ");
+                        embedBuilder.WithDescription("`Her ayın ilk perşembesi (Yaz Dönemi 21:00 - Kış Dönemi 22:00) gelen güncelleme ile tüm sunuculara` ***Zorunlu Harita Sıfırlaması*** `atılır.\nBP(Blueprint/Öğrenilen Eşyalar) Sıfırlaması ise sunucu sahibinin isteğine bağlıdır.`");
                         embedBuilder.WithThumbnailUrl("https://yt3.googleusercontent.com/ytc/AL5GRJUOzRJWMKDaDQdJVVsXHCBcWQsOZYe3YZOfTj1k=s176-c-k-c0x00ffffff-no-rj-mo");
                         embedBuilder.WithFooter(DateTime.Now.ToString(), "https://cdn.discordapp.com/attachments/1060075799081918516/1177909719772434432/logo.png?ex=657438e9&is=6561c3e9&hm=b17bd3166e83f5173abc9bca58df513f85e71ed445a1caf41a3429289ec78aa2&");
-                        embedBuilder.AddField("Sonraki Güncelleme Tarihi", $"<t:{_nextUpdateTimestamp}:F>", false);
-                        embedBuilder.AddField("Sonraki Güncellemeye Kalan Zaman", $"<t:{_nextUpdateTimestamp}:R>", false);
+                        embedBuilder.AddField("Sonraki Güncelleme Tarihi:", $"<t:{_nextUpdateTimestamp}:F>", false);
+                        embedBuilder.AddField("Sonraki Güncellemeye Kalan Zaman:", $"<t:{_nextUpdateTimestamp}:R>", false);
                         embedBuilder.AddField("Soran Kullanıcı", userTag, false);
                         embedBuilder.WithColor(Color.Blue);
 
@@ -598,14 +623,14 @@ namespace RT_Control
                 if (message.Content.Contains("```"))
                 {
                     LogMessage("[Responder] Mesaj kod satırı içeriyor. siliniyor...");
-                    string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız kod formatı içeremez.";
+                    string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız kod formatı (''') içeremez.";
                     user.SendMessageAsync(sndmsg);
                     return message.DeleteAsync();
                 }
-                if (message.Content.Contains("# ") || message.Content.Contains("## ")|| message.Content.Contains("### "))
+                if (message.Content.Contains("# ") || message.Content.Contains("## ") || message.Content.Contains("### "))
                 {
                     LogMessage("[Responder] Mesaj başlık içeriyor. siliniyor...");
-                    string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız başlık formatı içeremez.";
+                    string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız başlık formatı (#) içeremez.";
                     user.SendMessageAsync(sndmsg);
                     return message.DeleteAsync();
                 }
