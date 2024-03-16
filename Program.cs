@@ -3,6 +3,7 @@ using Discord.WebSocket;
 using HtmlAgilityPack;
 using Newtonsoft.Json;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -55,6 +56,7 @@ namespace RT_Control
             "zehir",
             "temizle",
             "iyi iletişim",
+            "sıfırlama",
             "silme"
         };
 
@@ -80,9 +82,6 @@ namespace RT_Control
             public string avatar { get; set; }
         }
 
-        private static HashSet<string> storedSkins = new HashSet<string>();
-        private static HashSet<string> sentSkins = new HashSet<string>();
-
         private class SkinItem
         {
             public string Name { get; set; }
@@ -90,6 +89,8 @@ namespace RT_Control
             public string Price { get; set; }
             public string Image { get; set; }
         }
+
+        static List<SkinItem> skinDatalast = new List<SkinItem>();
 
         private static void Main(string[] args)
         {
@@ -112,6 +113,8 @@ namespace RT_Control
             _client.Log += Log;
 
             _client.MessageReceived += MessageReceived;
+
+            _client.MessageUpdated += MessageUpdated;
 
             _client.Ready += BotReady;
 
@@ -259,30 +262,30 @@ namespace RT_Control
 
                 if (response != null)
                 {
-                    List<SkinItem> skinData = ParseSkins(response);
-
-                    if (skinData != null)
+                    List<SkinItem> skinDatacurrent = ParseSkins(response);
+                 
+                    if (skinDatacurrent != null)
                     {
-                        var newSkins = skinData.Select(item => item.Name).ToList();
-
-                        if (storedSkins.Count == 0)
+                        LogMessage($"skinDatacurrent.Count: {skinDatacurrent.Count}");
+                        foreach (var item in skinDatacurrent)
                         {
-                            storedSkins.UnionWith(newSkins);
+                            LogMessage($"[CURRENT] Name: {item.Name} | Price: {item.Price}$ | Type: {item.Item} | Image: {item.Image}");
+                        }
+                        if (skinDatacurrent.Count == 0)
+                        {
+                            skinDatalast.Clear();
+                            skinDatalast.AddRange(skinDatacurrent);
                         }
                         else
                         {
-                            var differences = skinData.Where(skin => newSkins.Contains(skin.Name) && !storedSkins.Contains(skin.Name)).ToList();
-
-                            if (differences.Any())
+                            bool areEqual = skinDatacurrent.SequenceEqual(skinDatalast);
+                            if (areEqual)
                             {
                                 var channel = _client.GetChannel(_SkinKanalID) as IMessageChannel;
-
                                 float totalcost = 0;
-                                foreach (var skins in skinData) { totalcost = totalcost + float.Parse(skins.Price, CultureInfo.InvariantCulture.NumberFormat); }
-                                var skincount = skinData.Count;
-
+                                foreach (var skins in skinDatacurrent) { totalcost = totalcost + float.Parse(skins.Price, CultureInfo.InvariantCulture.NumberFormat); }
+                                var skincount = skinDatacurrent.Count;
                                 LogMessage($"[SkinTracker] Mağaza Yenilendi --> {skincount} yeni kostüm. Toplam Kostüm Değeri: {totalcost}$");
-
                                 EmbedBuilder embedBuildformain = new EmbedBuilder();
                                 embedBuildformain.WithTitle(":bell: MAĞAZA YENİLENDİ! | " + DateTime.Now.ToShortDateString() + " :bell:");
                                 embedBuildformain.WithColor(Color.Blue);
@@ -291,9 +294,8 @@ namespace RT_Control
                                 embedBuildformain.WithFooter(DateTime.Now.ToString(), "https://cdn.discordapp.com/attachments/1060075799081918516/1177909719772434432/logo.png?ex=657438e9&is=6561c3e9&hm=b17bd3166e83f5173abc9bca58df513f85e71ed445a1caf41a3429289ec78aa2&");
                                 await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
 
-                                foreach (var skins in skinData)
+                                foreach (var skins in skinDatacurrent)
                                 {
-                                    sentSkins.Add(skins.Name);
                                     LogMessage($"[SkinTracker] Yeni Skin --> {skins.Name}");
                                     EmbedBuilder embedBuilder = new EmbedBuilder();
                                     embedBuilder.WithTitle($"{skins.Name} - {skins.Price}$");
@@ -302,8 +304,10 @@ namespace RT_Control
                                     embedBuilder.WithFooter("Item Type: " + skins.Item);
                                     await channel.SendMessageAsync("", false, embedBuilder.Build());
                                 }
+
+                                skinDatalast.Clear();
+                                skinDatalast.AddRange(skinDatacurrent);
                             }
-                            storedSkins.UnionWith(newSkins);
                         }
                     }
                     else
@@ -315,8 +319,6 @@ namespace RT_Control
                 {
                     Console.WriteLine("[SkinTracker] Response null.");
                 }
-
-                LogMessage($"[SkinTracker] Depolanan: {storedSkins.Count} - Gönderilen: {sentSkins.Count}");
             }
             catch (Exception ex)
             {
@@ -633,6 +635,64 @@ namespace RT_Control
                     string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız başlık formatı (#) içeremez.";
                     user.SendMessageAsync(sndmsg);
                     return message.DeleteAsync();
+                }
+            }
+            return Task.CompletedTask;
+        }
+
+        private static Task MessageUpdated(Cacheable<IMessage, ulong> before, SocketMessage after, ISocketMessageChannel channel)
+        {
+            IUser user = after.Author;
+            string userTag = $"{user.Mention}";
+     
+            if (after.Channel.Id == _KlanAramaKanalID)
+            {
+                if (after.Author.Id != _client.CurrentUser.Id)
+                {
+                    if (blacklistedKeywords.Any(keyword => after.Content.ToLower().Contains(keyword)))
+                    {
+                        SocketGuildUser socketguser = after.Author as SocketGuildUser;
+                        IRole roleToAssign = socketguser.Guild.Roles.FirstOrDefault(x => x.Name == "CEZALI");
+                        LogMessage("[Responder] Ceza veriliyor!");
+                        if (roleToAssign != null) socketguser.AddRoleAsync(roleToAssign);
+                        else LogMessage("[Responder] Cezalı rolü verilemedi.");
+                        LogMessage("[Responder] Mesaj siliniyor...");
+                        after.DeleteAsync();
+                    }
+                }
+
+                string[] satirlar = after.Content.Split('\n');
+                int bosSatirSayisi = 0;
+                foreach (string satir in satirlar) { if (string.IsNullOrWhiteSpace(satir)) bosSatirSayisi++; }
+
+                satirlar.Count();
+                if (satirlar.Length > 10)
+                {
+                    LogMessage("[Responder] Mesaj 10 satırdan uzun. siliniyor...");
+                    string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız 10 satırdan uzun olamaz.";
+                    user.SendMessageAsync(sndmsg);
+                    return after.DeleteAsync();
+                }
+                if (bosSatirSayisi > 2)
+                {
+                    LogMessage("[Responder] Mesaj 2'den fazla boş satır içeriyor. siliniyor...");
+                    string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız 2'den fazla boş satır içeremez.";
+                    user.SendMessageAsync(sndmsg);
+                    return after.DeleteAsync();
+                }
+                if (after.Content.Contains("```"))
+                {
+                    LogMessage("[Responder] Mesaj kod satırı içeriyor. siliniyor...");
+                    string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız kod formatı (''') içeremez.";
+                    user.SendMessageAsync(sndmsg);
+                    return after.DeleteAsync();
+                }
+                if (after.Content.Contains("# ") || after.Content.Contains("## ") || after.Content.Contains("### "))
+                {
+                    LogMessage("[Responder] Mesaj başlık içeriyor. siliniyor...");
+                    string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız başlık formatı (#) içeremez.";
+                    user.SendMessageAsync(sndmsg);
+                    return after.DeleteAsync();
                 }
             }
             return Task.CompletedTask;
