@@ -250,7 +250,7 @@ namespace RT_Control
             while (true)
             {
                 await CheckForNewSkins();
-                await Task.Delay(TimeSpan.FromSeconds(15));
+                await Task.Delay(TimeSpan.FromMinutes(1));
             }
         }
 
@@ -279,7 +279,6 @@ namespace RT_Control
                 if (differences.Any())
                 {
                     var channel = _client.GetChannel(_SkinKanalID) as IMessageChannel;
-                    LogMessage("[SkinTracker] diff fark var.");
                     var skincount = skinData.Count;
                     float totalcost = 0;
                     foreach (var skin in skinData)
@@ -469,8 +468,6 @@ namespace RT_Control
                 if (commitData?.Results.Count() != null)
                 {
                     var newCommits = commitData.Results.Select(commit => commit.message).ToList();
-
-                    LogMessage($"[CommitTracker] commitData.Count --> {commitData.Results.Count}");
 
                     if (storedCommits.Count == 0)
                     {
