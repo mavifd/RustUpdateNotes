@@ -3,7 +3,6 @@ using Discord.WebSocket;
 using HtmlAgilityPack;
 using Newtonsoft.Json;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -11,8 +10,8 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
-using static RT_Control.Program;
 
 namespace RT_Control
 {
@@ -256,57 +255,83 @@ namespace RT_Control
 
         private static async Task CheckForNewSkins()
         {
-
-            var response = await httpClient.GetStringAsync(skinApiUrl);
-            if (response == null) { LogMessage("[SkinTracker] Response null."); return; }
-            List<SkinItem> skinData = ParseSkins(response);
-            if (skinData.Count == 0) { LogMessage("[SkinTracker] skinData null."); return; }
-            var newSkins = skinData.Select(Skin => Skin.Name).ToList();
-
-            foreach (var item in skinData)
+            try
             {
-                LogMessage($"[SkinTracker] Name: {item.Name} | Price: {item.Price} | Type: {item.Item} | Image: {item.Image}");
-            }
+                var cancellationTokenSource = new CancellationTokenSource();
+                cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(30)); // 30 saniye zaman aşımı süresi
 
-            if (storedSkins.Count == 0)
-            {
-                storedSkins.Clear();
-                storedSkins.UnionWith(newSkins);
-            }
-            else
-            {
-                var differences = skinData.Where(Skin => newSkins.Contains(Skin.Name) && !storedSkins.Contains(Skin.Name)).ToList();
-                if (differences.Any())
+                var response_main = await httpClient.GetAsync(skinApiUrl, cancellationTokenSource.Token);
+
+                if (!response_main.IsSuccessStatusCode) { LogMessage("[SkinTracker] responsecontect null."); return; }
+
+                var response = await response_main.Content.ReadAsStringAsync();
+
+                if (string.IsNullOrEmpty(response)) { LogMessage("[SkinTracker] response null."); return; }
+
+                List<SkinItem> skinData = ParseSkins(response);
+
+                if (skinData.Count == 0) { LogMessage("[SkinTracker] skinData null."); return; }
+
+                var newSkins = skinData.Select(Skin => Skin.Name).ToList();
+
+                foreach (var item in skinData)
                 {
-                    var channel = _client.GetChannel(_SkinKanalID) as IMessageChannel;
-                    var skincount = skinData.Count;
-                    float totalcost = 0;
-                    foreach (var skin in skinData)
-                    {
-                        float price = float.Parse(skin.Price.Replace("$", ""), CultureInfo.InvariantCulture);
-                        totalcost += price;
-                    }
-                    LogMessage($"[SkinTracker] Mağaza Yenilendi --> {skincount} yeni kostüm. Toplam Kostüm Değeri: {totalcost}$");
-                    EmbedBuilder embedBuildformain = new EmbedBuilder();
-                    embedBuildformain.WithTitle(":bell: MAĞAZA YENİLENDİ! | " + DateTime.Now.ToShortDateString() + " :bell:");
-                    embedBuildformain.WithColor(Color.Blue);
-                    embedBuildformain.WithDescription($"**{skincount}** yeni kostüm mağazaye eklendi.\n\n Toplam Kostüm Değeri: **{totalcost}$**");
-                    embedBuildformain.WithUrl("https://store.steampowered.com/itemstore/252490/");
-                    embedBuildformain.WithFooter(DateTime.Now.ToString(), "https://cdn.discordapp.com/attachments/1060075799081918516/1177909719772434432/logo.png?ex=657438e9&is=6561c3e9&hm=b17bd3166e83f5173abc9bca58df513f85e71ed445a1caf41a3429289ec78aa2&");
-                    await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
-                    foreach (var skins in skinData)
-                    {
-                        LogMessage($"[SkinTracker] Yeni Skin --> {skins.Name}");
-                        EmbedBuilder embedBuilderInline = new EmbedBuilder();
-                        embedBuilderInline.WithTitle($"{skins.Name} - {skins.Price}");
-                        embedBuilderInline.WithUrl("https://store.steampowered.com/itemstore/252490");
-                        embedBuilderInline.WithImageUrl(skins.Image);
-                        embedBuilderInline.WithFooter("Item Type: " + skins.Item);
-                        await channel.SendMessageAsync("", false, embedBuilderInline.Build());
-                    }
+                    LogMessage($"[SkinTracker] Name: {item.Name} | Price: {item.Price} | Type: {item.Item} | Image: {item.Image}");
+                }
+
+                if (storedSkins.Count == 0)
+                {
                     storedSkins.Clear();
                     storedSkins.UnionWith(newSkins);
                 }
+                else
+                {
+                    var differences = skinData.Where(Skin => newSkins.Contains(Skin.Name) && !storedSkins.Contains(Skin.Name)).ToList();
+                    if (differences.Any())
+                    {
+                        var channel = _client.GetChannel(_SkinKanalID) as IMessageChannel;
+                        var skincount = skinData.Count;
+                        float totalcost = 0;
+                        foreach (var skin in skinData)
+                        {
+                            float price = float.Parse(skin.Price.Replace("$", ""), CultureInfo.InvariantCulture);
+                            totalcost += price;
+                        }
+                        LogMessage($"[SkinTracker] Mağaza Yenilendi --> {skincount} yeni kostüm. Toplam Kostüm Değeri: {totalcost}$");
+                        EmbedBuilder embedBuildformain = new EmbedBuilder();
+                        embedBuildformain.WithTitle(":bell: MAĞAZA YENİLENDİ! | " + DateTime.Now.ToShortDateString() + " :bell:");
+                        embedBuildformain.WithColor(Color.Blue);
+                        embedBuildformain.WithDescription($"**{skincount}** yeni kostüm mağazaye eklendi.\n\n Toplam Kostüm Değeri: **{totalcost}$**");
+                        embedBuildformain.WithUrl("https://store.steampowered.com/itemstore/252490/");
+                        embedBuildformain.WithFooter(DateTime.Now.ToString(), "https://cdn.discordapp.com/attachments/1060075799081918516/1177909719772434432/logo.png?ex=657438e9&is=6561c3e9&hm=b17bd3166e83f5173abc9bca58df513f85e71ed445a1caf41a3429289ec78aa2&");
+                        await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
+                        foreach (var skins in skinData)
+                        {
+                            LogMessage($"[SkinTracker] Yeni Skin --> {skins.Name}");
+                            EmbedBuilder embedBuilderInline = new EmbedBuilder();
+                            embedBuilderInline.WithTitle($"{skins.Name} - {skins.Price}");
+                            embedBuilderInline.WithUrl("https://store.steampowered.com/itemstore/252490");
+                            embedBuilderInline.WithImageUrl(skins.Image);
+                            embedBuilderInline.WithFooter("Item Type: " + skins.Item);
+                            await channel.SendMessageAsync("", false, embedBuilderInline.Build());
+                        }
+                        storedSkins.Clear();
+                        storedSkins.UnionWith(newSkins);
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                LogMessage("[SkinTracker] İstek zaman aşımına uğradı.");
+                return;
+            }
+            catch (HttpRequestException ex)
+            {
+                LogMessage("[SkinTracker] HTTP request failed: " + ex.Message);
+            }
+            catch (Exception ex)
+            {
+                LogMessage("[SkinTracker] An error occurred: " + ex.Message);
             }
         }
 
