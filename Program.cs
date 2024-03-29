@@ -20,11 +20,11 @@ namespace RT_Control
         private static string token = "MTExMTAxNjg2MDc0NjUzMDgzNg.G5Tmp_.pk-mcC5NNneSCwWOZuvFwOzovem4rieLdLKT3k";
         private static DiscordSocketClient _client;
 
-        private static ulong _SohbetKanalID = 448607745122369536;
-        private static ulong _CommitKanalID = 1134966799876763658;
-        private static ulong _UpdateKanalID = 1215681953869864991;
-        private static ulong _SkinKanalID = 1004983958104199218;
-        private static ulong _KlanAramaKanalID = 448441303043145729;
+        private static ulong _SohbetKanalID = 1223037877911556110;
+        private static ulong _CommitKanalID = 1223059020269486101;
+        private static ulong _UpdateKanalID = 1223058923775594588;
+        private static ulong _SkinKanalID = 1223058996970131596;
+        private static ulong _KlanAramaKanalID = 1223060710318145698;
 
         private static readonly HttpClient httpClient = new HttpClient();
         private static string commitApiUrl = "https://commits.facepunch.com/r/rust_reboot/?format=json";
@@ -258,7 +258,7 @@ namespace RT_Control
             try
             {
                 var cancellationTokenSource = new CancellationTokenSource();
-                cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(30)); // 30 saniye zaman aşımı süresi
+                cancellationTokenSource.CancelAfter(TimeSpan.FromMinutes(1)); 
 
                 var response_main = await httpClient.GetAsync(skinApiUrl, cancellationTokenSource.Token);
 
@@ -463,7 +463,7 @@ namespace RT_Control
 
                 LogMessage($"{message} [{CurrentVersion}]");
 
-                string changenumber_t = MainVersion + "-->" + CurrentVersion;
+                string changenumber_t = MainVersion + " --> " + CurrentVersion;
 
                 EmbedBuilder embedBuilder = new EmbedBuilder();
                 embedBuilder.WithTitle(message);
@@ -602,7 +602,7 @@ namespace RT_Control
                     if (blacklistedKeywords.Any(keyword => message.Content.ToLower().Contains(keyword)))
                     {
                         SocketGuildUser socketguser = message.Author as SocketGuildUser;
-                        IRole roleToAssign = socketguser.Guild.Roles.FirstOrDefault(x => x.Name == "CEZALI");
+                        IRole roleToAssign = socketguser.Guild.Roles.FirstOrDefault(x => x.Name == "Uzaklaştırılmış");
                         LogMessage("[Responder] Ceza veriliyor!");
                         if (roleToAssign != null) socketguser.AddRoleAsync(roleToAssign);
                         else LogMessage("[Responder] Cezalı rolü verilemedi.");
@@ -660,7 +660,7 @@ namespace RT_Control
                     if (blacklistedKeywords.Any(keyword => after.Content.ToLower().Contains(keyword)))
                     {
                         SocketGuildUser socketguser = after.Author as SocketGuildUser;
-                        IRole roleToAssign = socketguser.Guild.Roles.FirstOrDefault(x => x.Name == "CEZALI");
+                        IRole roleToAssign = socketguser.Guild.Roles.FirstOrDefault(x => x.Name == "Uzaklaştırılmış");
                         LogMessage("[Responder] Ceza veriliyor!");
                         if (roleToAssign != null) socketguser.AddRoleAsync(roleToAssign);
                         else LogMessage("[Responder] Cezalı rolü verilemedi.");
