@@ -303,7 +303,7 @@ namespace RT_Control
                         embedBuildformain.WithColor(Color.Blue);
                         embedBuildformain.WithDescription($"**{skincount}** yeni kostüm mağazaye eklendi.\n\n Toplam Kostüm Değeri: **{totalcost}$**");
                         embedBuildformain.WithUrl("https://store.steampowered.com/itemstore/252490/");
-                        embedBuildformain.WithFooter(DateTime.Now.ToString(), "https://cdn.discordapp.com/attachments/1060075799081918516/1177909719772434432/logo.png?ex=657438e9&is=6561c3e9&hm=b17bd3166e83f5173abc9bca58df513f85e71ed445a1caf41a3429289ec78aa2&");
+                        embedBuildformain.WithFooter(DateTime.Now.ToString(), "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no");
                         await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
                         foreach (var skins in skinData)
                         {
@@ -470,7 +470,7 @@ namespace RT_Control
                 embedBuilder.WithDescription(description);
                 embedBuilder.WithColor(Color.Blue);
                 embedBuilder.WithThumbnailUrl("https://yt3.googleusercontent.com/ytc/AL5GRJUOzRJWMKDaDQdJVVsXHCBcWQsOZYe3YZOfTj1k=s176-c-k-c0x00ffffff-no-rj-mo");
-                embedBuilder.WithFooter(DateTime.Now.ToString(), "https://cdn.discordapp.com/attachments/1060075799081918516/1177909719772434432/logo.png?ex=657438e9&is=6561c3e9&hm=b17bd3166e83f5173abc9bca58df513f85e71ed445a1caf41a3429289ec78aa2&");
+                embedBuilder.WithFooter(DateTime.Now.ToString(), "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no");
                 embedBuilder.AddField("Sürüm Numarası Değişimi:", changenumber_t, true); ;
 
                 var channel = _client.GetChannel(_UpdateKanalID) as IMessageChannel;
@@ -512,7 +512,7 @@ namespace RT_Control
                                 embedBuilder.WithDescription(commit.message);
                                 embedBuilder.WithColor(Color.Blue);
                                 embedBuilder.WithThumbnailUrl(commit.user.avatar);
-                                embedBuilder.WithFooter(DateTime.Now.ToString(), "https://cdn.discordapp.com/attachments/1060075799081918516/1177909719772434432/logo.png?ex=657438e9&is=6561c3e9&hm=b17bd3166e83f5173abc9bca58df513f85e71ed445a1caf41a3429289ec78aa2&");
+                                embedBuilder.WithFooter(DateTime.Now.ToString(), "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no");
                                 embedBuilder.AddField("ID:", commit.id, true);
                                 embedBuilder.AddField("ChangeSet:", commit.changeset, true);
 
@@ -538,7 +538,7 @@ namespace RT_Control
 
         private static Task ResponderUpdate()
         {
-            int DayTimeHour = 19; //18 YAZ, 19 KIŞ.
+            int DayTimeHour = 18; //18 YAZ, 19 KIŞ.
             DateTime Today = DateTime.Today;
             Today = Today.AddHours(DayTimeHour);
             long TodayTimeStamp = ((DateTimeOffset)Today).ToUnixTimeSeconds();
@@ -583,8 +583,8 @@ namespace RT_Control
                         EmbedBuilder embedBuilder = new EmbedBuilder();
                         embedBuilder.WithTitle(":information_source:  **Güncelleme Bilgisi**  :information_source:");
                         embedBuilder.WithDescription("`Her ayın ilk perşembesi (Yaz Dönemi 21:00 - Kış Dönemi 22:00) gelen güncelleme ile tüm sunuculara` ***Zorunlu Harita Sıfırlaması*** `atılır.\nBP(Blueprint/Öğrenilen Eşyalar) Sıfırlaması ise sunucu sahibinin isteğine bağlıdır.`");
-                        embedBuilder.WithThumbnailUrl("https://yt3.googleusercontent.com/ytc/AL5GRJUOzRJWMKDaDQdJVVsXHCBcWQsOZYe3YZOfTj1k=s176-c-k-c0x00ffffff-no-rj-mo");
-                        embedBuilder.WithFooter(DateTime.Now.ToString(), "https://cdn.discordapp.com/attachments/1060075799081918516/1177909719772434432/logo.png?ex=657438e9&is=6561c3e9&hm=b17bd3166e83f5173abc9bca58df513f85e71ed445a1caf41a3429289ec78aa2&");
+                        embedBuilder.WithThumbnailUrl("https://yt3.googleusercontent.com/hGAyMhD9FMYpdiNO7UGUSy4WBa9Jos1XnIkxFPLrkOv9M8Q9Bf-6pyKvtAIfjesEY5BWcZUA8PE=s176-c-k-c0x00ffffff-no-rj");
+                        embedBuilder.WithFooter(DateTime.Now.ToString(), "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no");
                         embedBuilder.AddField("Sonraki Güncelleme Tarihi:", $"<t:{_nextUpdateTimestamp}:F>", false);
                         embedBuilder.AddField("Sonraki Güncellemeye Kalan Zaman:", $"<t:{_nextUpdateTimestamp}:R>", false);
                         embedBuilder.AddField("Soran Kullanıcı", userTag, false);
