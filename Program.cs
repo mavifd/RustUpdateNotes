@@ -24,7 +24,6 @@ namespace RT_Control
         private static ulong _CommitKanalID = 1223059020269486101;
         private static ulong _UpdateKanalID = 1223058923775594588;
         private static ulong _SkinKanalID = 1223058996970131596;
-        private static ulong _KlanAramaKanalID = 1223060710318145698;
 
         private static readonly HttpClient httpClient = new HttpClient();
         private static string commitApiUrl = "https://commits.facepunch.com/r/rust_reboot/?format=json";
@@ -45,18 +44,6 @@ namespace RT_Control
             "güncelleme",
             "global",
             "update"
-        };
-
-        private static List<string> blacklistedKeywords = new List<string>
-        {
-            "istisna",
-            "sürtük",
-            "tüzük",
-            "zehir",
-            "temizle",
-            "iyi iletişim",
-            "sıfırlama",
-            "silme"
         };
 
         public class CommitData
@@ -112,8 +99,6 @@ namespace RT_Control
             _client.Log += Log;
 
             _client.MessageReceived += MessageReceived;
-
-            _client.MessageUpdated += MessageUpdated;
 
             _client.Ready += BotReady;
 
@@ -258,15 +243,15 @@ namespace RT_Control
             try
             {
                 var cancellationTokenSource = new CancellationTokenSource();
-                cancellationTokenSource.CancelAfter(TimeSpan.FromMinutes(1)); 
+                cancellationTokenSource.CancelAfter(TimeSpan.FromMinutes(1));
 
                 var response_main = await httpClient.GetAsync(skinApiUrl, cancellationTokenSource.Token);
 
-                if (!response_main.IsSuccessStatusCode) { LogMessage("[SkinTracker] responsecontect null."); return; }
+                if (!response_main.IsSuccessStatusCode) { LogMessage("[SkinTracker] response contect null."); return; }
 
                 var response = await response_main.Content.ReadAsStringAsync();
 
-                if (string.IsNullOrEmpty(response)) { LogMessage("[SkinTracker] response null."); return; }
+                if (response == "") { LogMessage("[SkinTracker] response null."); return; }
 
                 List<SkinItem> skinData = ParseSkins(response);
 
@@ -343,7 +328,9 @@ namespace RT_Control
             foreach (Match match in matches)
             {
                 string src = match.Groups[1].Value;
-                if (!src.StartsWith("https://avatars", StringComparison.OrdinalIgnoreCase) && src.StartsWith("https://steamcommunity-a.akamaihd.net/economy", StringComparison.OrdinalIgnoreCase)) imageUrls.Add(src);
+                if (!src.StartsWith("https://avatars", StringComparison.OrdinalIgnoreCase)
+                    && (src.StartsWith("https://steamcommunity-a.akamaihd.net/economy", StringComparison.OrdinalIgnoreCase) ||
+                    src.StartsWith("https://files.facepunch", StringComparison.OrdinalIgnoreCase))) imageUrls.Add(src);
             }
             return imageUrls;
         }
@@ -351,13 +338,10 @@ namespace RT_Control
         private static List<SkinItem> ParseSkins(string html)
         {
             List<SkinItem> skinItems = new List<SkinItem>();
-
             HtmlDocument doc = new HtmlDocument();
             doc.LoadHtml(html);
-
             var storeItems = doc.DocumentNode.SelectNodes("//div[@class='store-item full-height']");
             List<string> imageUrls = ExtractImageUrlsStartingWith(html);
-
             if (storeItems != null)
             {
                 if (imageUrls.Count >= storeItems.Count)
@@ -461,7 +445,7 @@ namespace RT_Control
                 if (server) EnSonSunucu = CurrentVersion;
                 else EnSonOyun = CurrentVersion;
 
-                LogMessage($"{message} [{CurrentVersion}]");
+                LogMessage($"[UpdateChecker] {message} [{CurrentVersion}]");
 
                 string changenumber_t = MainVersion + " --> " + CurrentVersion;
 
@@ -469,7 +453,7 @@ namespace RT_Control
                 embedBuilder.WithTitle(message);
                 embedBuilder.WithDescription(description);
                 embedBuilder.WithColor(Color.Blue);
-                embedBuilder.WithThumbnailUrl("https://yt3.googleusercontent.com/ytc/AL5GRJUOzRJWMKDaDQdJVVsXHCBcWQsOZYe3YZOfTj1k=s176-c-k-c0x00ffffff-no-rj-mo");
+                embedBuilder.WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj");
                 embedBuilder.WithFooter(DateTime.Now.ToString(), "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no");
                 embedBuilder.AddField("Sürüm Numarası Değişimi:", changenumber_t, true); ;
 
@@ -583,7 +567,7 @@ namespace RT_Control
                         EmbedBuilder embedBuilder = new EmbedBuilder();
                         embedBuilder.WithTitle(":information_source:  **Güncelleme Bilgisi**  :information_source:");
                         embedBuilder.WithDescription("`Her ayın ilk perşembesi (Yaz Dönemi 21:00 - Kış Dönemi 22:00) gelen güncelleme ile tüm sunuculara` ***Zorunlu Harita Sıfırlaması*** `atılır.\nBP(Blueprint/Öğrenilen Eşyalar) Sıfırlaması ise sunucu sahibinin isteğine bağlıdır.`");
-                        embedBuilder.WithThumbnailUrl("https://yt3.googleusercontent.com/hGAyMhD9FMYpdiNO7UGUSy4WBa9Jos1XnIkxFPLrkOv9M8Q9Bf-6pyKvtAIfjesEY5BWcZUA8PE=s176-c-k-c0x00ffffff-no-rj");
+                        embedBuilder.WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj");
                         embedBuilder.WithFooter(DateTime.Now.ToString(), "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no");
                         embedBuilder.AddField("Sonraki Güncelleme Tarihi:", $"<t:{_nextUpdateTimestamp}:F>", false);
                         embedBuilder.AddField("Sonraki Güncellemeye Kalan Zaman:", $"<t:{_nextUpdateTimestamp}:R>", false);
@@ -592,115 +576,6 @@ namespace RT_Control
 
                         return message.Channel.SendMessageAsync("", false, embedBuilder.Build());
                     }
-                }
-            }
-
-            if (message.Channel.Id == _KlanAramaKanalID)
-            {
-                if (message.Author.Id != _client.CurrentUser.Id)
-                {
-                    if (blacklistedKeywords.Any(keyword => message.Content.ToLower().Contains(keyword)))
-                    {
-                        SocketGuildUser socketguser = message.Author as SocketGuildUser;
-                        IRole roleToAssign = socketguser.Guild.Roles.FirstOrDefault(x => x.Name == "Uzaklaştırılmış");
-                        LogMessage("[Responder] Ceza veriliyor!");
-                        if (roleToAssign != null) socketguser.AddRoleAsync(roleToAssign);
-                        else LogMessage("[Responder] Cezalı rolü verilemedi.");
-                        LogMessage("[Responder] Mesaj siliniyor...");
-                        message.DeleteAsync();
-                    }
-                }
-
-                string[] satirlar = message.Content.Split('\n');
-                int bosSatirSayisi = 0;
-                foreach (string satir in satirlar) { if (string.IsNullOrWhiteSpace(satir)) bosSatirSayisi++; }
-
-                satirlar.Count();
-                if (satirlar.Length > 10)
-                {
-                    LogMessage("[Responder] Mesaj 10 satırdan uzun. siliniyor...");
-                    string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız 10 satırdan uzun olamaz.";
-                    user.SendMessageAsync(sndmsg);
-                    return message.DeleteAsync();
-                }
-                if (bosSatirSayisi > 2)
-                {
-                    LogMessage("[Responder] Mesaj 2'den fazla boş satır içeriyor. siliniyor...");
-                    string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız 2'den fazla boş satır içeremez.";
-                    user.SendMessageAsync(sndmsg);
-                    return message.DeleteAsync();
-                }
-                if (message.Content.Contains("```"))
-                {
-                    LogMessage("[Responder] Mesaj kod satırı içeriyor. siliniyor...");
-                    string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız kod formatı (''') içeremez.";
-                    user.SendMessageAsync(sndmsg);
-                    return message.DeleteAsync();
-                }
-                if (message.Content.Contains("# ") || message.Content.Contains("## ") || message.Content.Contains("### "))
-                {
-                    LogMessage("[Responder] Mesaj başlık içeriyor. siliniyor...");
-                    string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız başlık formatı (#) içeremez.";
-                    user.SendMessageAsync(sndmsg);
-                    return message.DeleteAsync();
-                }
-            }
-            return Task.CompletedTask;
-        }
-
-        private static Task MessageUpdated(Cacheable<IMessage, ulong> before, SocketMessage after, ISocketMessageChannel channel)
-        {
-            IUser user = after.Author;
-            string userTag = $"{user.Mention}";
-
-            if (after.Channel.Id == _KlanAramaKanalID)
-            {
-                if (after.Author.Id != _client.CurrentUser.Id)
-                {
-                    if (blacklistedKeywords.Any(keyword => after.Content.ToLower().Contains(keyword)))
-                    {
-                        SocketGuildUser socketguser = after.Author as SocketGuildUser;
-                        IRole roleToAssign = socketguser.Guild.Roles.FirstOrDefault(x => x.Name == "Uzaklaştırılmış");
-                        LogMessage("[Responder] Ceza veriliyor!");
-                        if (roleToAssign != null) socketguser.AddRoleAsync(roleToAssign);
-                        else LogMessage("[Responder] Cezalı rolü verilemedi.");
-                        LogMessage("[Responder] Mesaj siliniyor...");
-                        after.DeleteAsync();
-                    }
-                }
-
-                string[] satirlar = after.Content.Split('\n');
-                int bosSatirSayisi = 0;
-                foreach (string satir in satirlar) { if (string.IsNullOrWhiteSpace(satir)) bosSatirSayisi++; }
-
-                satirlar.Count();
-                if (satirlar.Length > 10)
-                {
-                    LogMessage("[Responder] Mesaj 10 satırdan uzun. siliniyor...");
-                    string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız 10 satırdan uzun olamaz.";
-                    user.SendMessageAsync(sndmsg);
-                    return after.DeleteAsync();
-                }
-                if (bosSatirSayisi > 2)
-                {
-                    LogMessage("[Responder] Mesaj 2'den fazla boş satır içeriyor. siliniyor...");
-                    string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız 2'den fazla boş satır içeremez.";
-                    user.SendMessageAsync(sndmsg);
-                    return after.DeleteAsync();
-                }
-                if (after.Content.Contains("```"))
-                {
-                    LogMessage("[Responder] Mesaj kod satırı içeriyor. siliniyor...");
-                    string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız kod formatı (''') içeremez.";
-                    user.SendMessageAsync(sndmsg);
-                    return after.DeleteAsync();
-                }
-                if (after.Content.Contains("# ") || after.Content.Contains("## ") || after.Content.Contains("### "))
-                {
-                    LogMessage("[Responder] Mesaj başlık içeriyor. siliniyor...");
-                    string sndmsg = "Rust Türkiye Topluluğunda klan arama/alım mesajınız, kanal kurallarına uymadığı için silinmiştir.\nKural İhlali: Mesajınız başlık formatı (#) içeremez.";
-                    user.SendMessageAsync(sndmsg);
-                    return after.DeleteAsync();
                 }
             }
             return Task.CompletedTask;
