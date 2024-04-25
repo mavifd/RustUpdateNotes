@@ -5,9 +5,11 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -238,6 +240,8 @@ namespace RT_Control
             }
         }
 
+        private static bool skinControlTimer = false;
+
         private static async Task CheckForNewSkins()
         {
             try
@@ -274,6 +278,17 @@ namespace RT_Control
                     var differences = skinData.Where(Skin => newSkins.Contains(Skin.Name) && !storedSkins.Contains(Skin.Name)).ToList();
                     if (differences.Any())
                     {
+                        if (!skinControlTimer)
+                        {
+                            await Task.Delay(TimeSpan.FromMinutes(10));
+                            skinControlTimer = true;
+                            return;
+                        }
+                        skinControlTimer = false;
+
+                        var ourimage = CreateBigImage(skinData);
+                        ourimage.Save("skinimage.png", System.Drawing.Imaging.ImageFormat.Png);
+
                         var channel = _client.GetChannel(_SkinKanalID) as IMessageChannel;
                         var skincount = skinData.Count;
                         float totalcost = 0;
@@ -285,21 +300,20 @@ namespace RT_Control
                         LogMessage($"[SkinTracker] Mağaza Yenilendi --> {skincount} yeni kostüm. Toplam Kostüm Değeri: {totalcost}$");
                         EmbedBuilder embedBuildformain = new EmbedBuilder();
                         embedBuildformain.WithTitle(":bell: MAĞAZA YENİLENDİ! | " + DateTime.Now.ToShortDateString() + " :bell:");
-                        embedBuildformain.WithColor(Color.Blue);
+                        embedBuildformain.WithColor(Discord.Color.Blue);
                         embedBuildformain.WithDescription($"**{skincount}** yeni kostüm mağazaye eklendi.\n\n Toplam Kostüm Değeri: **{totalcost}$**");
                         embedBuildformain.WithUrl("https://store.steampowered.com/itemstore/252490/");
                         embedBuildformain.WithFooter(DateTime.Now.ToString(), "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no");
                         await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
-                        foreach (var skins in skinData)
+
+                        using (var fileStream = new FileStream("skinimage.png", FileMode.Open))
                         {
-                            LogMessage($"[SkinTracker] Yeni Skin --> {skins.Name}");
-                            EmbedBuilder embedBuilderInline = new EmbedBuilder();
-                            embedBuilderInline.WithTitle($"{skins.Name} - {skins.Price}");
-                            embedBuilderInline.WithUrl("https://store.steampowered.com/itemstore/252490");
-                            embedBuilderInline.WithImageUrl(skins.Image);
-                            embedBuilderInline.WithFooter("Item Type: " + skins.Item);
-                            await channel.SendMessageAsync("", false, embedBuilderInline.Build());
+                            var memoryStream = new MemoryStream();
+                            fileStream.CopyTo(memoryStream);
+                            memoryStream.Position = 0;
+                            await channel.SendFileAsync(memoryStream, "skinimage.png");
                         }
+                        File.Delete("skinimage.png");
                         storedSkins.Clear();
                         storedSkins.UnionWith(newSkins);
                     }
@@ -318,6 +332,87 @@ namespace RT_Control
             {
                 LogMessage("[SkinTracker] An error occurred: " + ex.Message);
             }
+        }
+
+        private static System.Drawing.Image CreateBigImage(List<SkinItem> skindata)
+        {
+            var imageUrls = skindata.Select(Skin => Skin.Image).ToList();
+            var skinNames = skindata.Select(Skin => Skin.Name).ToList();
+            var skinPrices = skindata.Select(Skin => Skin.Price).ToList();
+            var skinType = skindata.Select(Skin => Skin.Item).ToList();
+
+            int imageSize = (int)Math.Ceiling(Math.Sqrt(imageUrls.Count)); // Calculate the size of the square
+            int squareSize = imageSize * 400; // Set the size of the square (default to 200 pixels)
+            Bitmap combinedImage = new Bitmap(squareSize, squareSize);
+
+            using (Graphics g = Graphics.FromImage(combinedImage))
+            {
+                g.Clear(System.Drawing.Color.FromArgb(255, 70, 70, 70)); // Set the background to white
+                int x = 0, y = 0;
+                int index = 0;
+
+                foreach (var url in imageUrls)
+                {
+                    try
+                    {
+                        using (WebClient client = new WebClient())
+                        {
+                            byte[] imageData = client.DownloadData(url);
+                            using (MemoryStream stream = new MemoryStream(imageData))
+                            {
+                                System.Drawing.Image img = System.Drawing.Image.FromStream(stream);
+
+                                // Draw each image at 200x200 size
+                                g.DrawImage(img, x * 400, y * 400, 350, 350);
+
+                                var skinname = skinNames[index];
+                                var skintype = skinType[index];
+                                var skinprice = skinPrices[index];
+
+                                // Draw the text
+                                if (index < imageUrls.Count)
+                                {
+                                    Font font = new Font("Arial", 18, FontStyle.Bold);
+                                    Font font2 = new Font("Arial", 12);
+                                    SizeF textSize = g.MeasureString(skinname, font);
+                                    if (textSize.Width > 400 || textSize.Height > 400) // Check if text fits within 200x200
+                                    {
+                                        float scale = Math.Min(400 / textSize.Width, 400 / textSize.Height);
+                                        font = new Font("Arial", 18 * scale, FontStyle.Bold);
+                                    }
+                                    float textX = x * 400 + (400 - textSize.Width) / 2;
+                                    float textY = (y + 1) * 400 - textSize.Height; // Place the text at the bottom of the image
+                                    g.DrawString(skinname, font, Brushes.White, new PointF(textX, textY - 30));
+                                    g.DrawString(skinprice, font, Brushes.ForestGreen, new PointF(textX, textY));
+                                    g.DrawString(skintype, font2, Brushes.DarkGray, new PointF(textX + 75, textY + 5));
+                                }
+
+                                // Draw the border
+                                using (Pen pen = new Pen(System.Drawing.Color.Black, 2))
+                                {
+                                    g.DrawRectangle(pen, x * 400, y * 400, 400, 400);
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogMessage("[SkinTracker] Creating image fail: " + ex.Message);
+                    }
+
+                    index++;
+                    x++;
+                    if (x >= imageSize)
+                    {
+                        x = 0;
+                        y++;
+                    }
+                    if (index >= imageSize * imageSize) // If it exceeds the square size, exit the loop
+                        break;
+                }
+            }
+
+            return combinedImage;
         }
 
         private static List<string> ExtractImageUrlsStartingWith(string html)
@@ -452,7 +547,7 @@ namespace RT_Control
                 EmbedBuilder embedBuilder = new EmbedBuilder();
                 embedBuilder.WithTitle(message);
                 embedBuilder.WithDescription(description);
-                embedBuilder.WithColor(Color.Blue);
+                embedBuilder.WithColor(Discord.Color.Blue);
                 embedBuilder.WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj");
                 embedBuilder.WithFooter(DateTime.Now.ToString(), "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no");
                 embedBuilder.AddField("Sürüm Numarası Değişimi:", changenumber_t, true); ;
@@ -494,7 +589,7 @@ namespace RT_Control
                                 EmbedBuilder embedBuilder = new EmbedBuilder();
                                 embedBuilder.WithTitle($"{commit.user.name} \n {commit.branch}");
                                 embedBuilder.WithDescription(commit.message);
-                                embedBuilder.WithColor(Color.Blue);
+                                embedBuilder.WithColor(Discord.Color.Blue);
                                 embedBuilder.WithThumbnailUrl(commit.user.avatar);
                                 embedBuilder.WithFooter(DateTime.Now.ToString(), "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no");
                                 embedBuilder.AddField("ID:", commit.id, true);
@@ -572,7 +667,7 @@ namespace RT_Control
                         embedBuilder.AddField("Sonraki Güncelleme Tarihi:", $"<t:{_nextUpdateTimestamp}:F>", false);
                         embedBuilder.AddField("Sonraki Güncellemeye Kalan Zaman:", $"<t:{_nextUpdateTimestamp}:R>", false);
                         embedBuilder.AddField("Soran Kullanıcı", userTag, false);
-                        embedBuilder.WithColor(Color.Blue);
+                        embedBuilder.WithColor(Discord.Color.Blue);
 
                         return message.Channel.SendMessageAsync("", false, embedBuilder.Build());
                     }
