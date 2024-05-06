@@ -585,18 +585,20 @@ namespace RT_Control
                         {
                             foreach (var commit in differences)
                             {
-                                LogMessage($"[CommitTracker] Yeni yorum --> {commit.message}");
-                                EmbedBuilder embedBuilder = new EmbedBuilder();
-                                embedBuilder.WithTitle($"{commit.user.name} \n {commit.branch}");
-                                embedBuilder.WithDescription(commit.message);
-                                embedBuilder.WithColor(Discord.Color.Blue);
-                                embedBuilder.WithThumbnailUrl(commit.user.avatar);
-                                embedBuilder.WithFooter(DateTime.Now.ToString(), "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no");
-                                embedBuilder.AddField("ID:", commit.id, true);
-                                embedBuilder.AddField("ChangeSet:", commit.changeset, true);
+                                LogMessage($"[CommitTracker] Yeni Commit: {commit.id}");
+
+                                var commitlink = "https://commits.facepunch.com/" + commit.id;
+
+                                EmbedBuilder newEmbedBuilder = new EmbedBuilder();
+                                newEmbedBuilder.WithAuthor(commit.user.name, commit.user.avatar);
+                                newEmbedBuilder.WithTitle(commit.branch);
+                                newEmbedBuilder.WithDescription(commit.message);
+                                newEmbedBuilder.WithUrl(commitlink);
+                                newEmbedBuilder.WithColor(Discord.Color.Blue);
+                                newEmbedBuilder.WithFooter($"ID: {commit.id} | Change:{commit.changeset} | {DateTime.Now.ToString()}");
 
                                 var channel = _client.GetChannel(_CommitKanalID) as IMessageChannel;
-                                await channel.SendMessageAsync("", false, embedBuilder.Build());
+                                await channel.SendMessageAsync("", false, newEmbedBuilder.Build());
                             }
                         }
                         storedCommits.UnionWith(newCommits);
