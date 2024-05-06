@@ -595,7 +595,7 @@ namespace RT_Control
                                 newEmbedBuilder.WithDescription(commit.message);
                                 newEmbedBuilder.WithUrl(commitlink);
                                 newEmbedBuilder.WithColor(Discord.Color.Blue);
-                                newEmbedBuilder.WithFooter($"ID: {commit.id} | Change:{commit.changeset} | {DateTime.Now.ToString()}");
+                                newEmbedBuilder.WithFooter($"ID: {commit.id} | Change: {commit.changeset} | {DateTime.Now.ToString()}");
 
                                 var channel = _client.GetChannel(_CommitKanalID) as IMessageChannel;
                                 await channel.SendMessageAsync("", false, newEmbedBuilder.Build());
