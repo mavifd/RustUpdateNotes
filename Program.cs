@@ -347,7 +347,7 @@ namespace RT_Control
 
             using (Graphics g = Graphics.FromImage(combinedImage))
             {
-                g.Clear(System.Drawing.Color.FromArgb(255, 70, 70, 70)); // Set the background to white
+                g.Clear(System.Drawing.Color.Transparent); // Set the background to transparent
                 int x = 0, y = 0;
                 int index = 0;
 
