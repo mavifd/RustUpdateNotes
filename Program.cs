@@ -1,6 +1,5 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using HtmlAgilityPack;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -22,31 +21,25 @@ namespace RT_Control
         private static string token = "MTExMTAxNjg2MDc0NjUzMDgzNg.G5Tmp_.pk-mcC5NNneSCwWOZuvFwOzovem4rieLdLKT3k";
         private static DiscordSocketClient _client;
 
-        private static ulong _SohbetKanalID = 1223037877911556110;
-        private static ulong _CommitKanalID = 1223059020269486101;
-        private static ulong _UpdateKanalID = 1223058923775594588;
-        private static ulong _SkinKanalID = 1223058996970131596;
-
         private static readonly HttpClient httpClient = new HttpClient();
         private static string commitApiUrl = "https://commits.facepunch.com/r/rust_reboot/?format=json";
         private static string skinApiUrl = "https://rust.scmm.app/store";
 
         private static HashSet<string> storedCommits = new HashSet<string>();
+        private static HashSet<string> storedSkins = new HashSet<string>();
+
+        private static Dictionary<ulong, List<ulong>> updateDateChannel_IDS = new Dictionary<ulong, List<ulong>>();
+        private static Dictionary<ulong, List<ulong>> updateTrackerChannel_IDS = new Dictionary<ulong, List<ulong>>();
+        private static Dictionary<ulong, List<ulong>> storeCheckerChannel_IDS = new Dictionary<ulong, List<ulong>>();
+        private static Dictionary<ulong, List<ulong>> commitFollowerChannel_IDS = new Dictionary<ulong, List<ulong>>();
 
         private static string EnSonOyun = "";
         private static string EnSonSunucu = "";
 
         private static long _nextUpdateTimestamp = 0;
-
         private static bool _botReady = false;
 
-        private static List<string> updateKeywords = new List<string>
-        {
-            "wipe",
-            "güncelleme",
-            "global",
-            "update"
-        };
+        private static int MessageDelay = 1000;
 
         public class CommitData
         {
@@ -78,12 +71,7 @@ namespace RT_Control
             public string Image { get; set; }
         }
 
-        private static HashSet<string> storedSkins = new HashSet<string>();
-
-        private static void Main(string[] args)
-        {
-            new Program().MainAsync().GetAwaiter().GetResult();
-        }
+        private static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
 
         public async Task MainAsync()
         {
@@ -100,9 +88,9 @@ namespace RT_Control
 
             _client.Log += Log;
 
-            _client.MessageReceived += MessageReceived;
-
             _client.Ready += BotReady;
+
+            _client.JoinedGuild += OnJoinedGuild;
 
             await _client.LoginAsync(TokenType.Bot, token);
             await _client.StartAsync();
@@ -114,6 +102,8 @@ namespace RT_Control
             LogMessage("Initialize update checker...");
 
             await Task.Run(Initialize_UpdateChecker);
+
+            await Task.Run(Initialize_Channels);
 
             LogMessage("Initialize update checker done!");
 
@@ -127,6 +117,88 @@ namespace RT_Control
             LogMessage("Starting tasks done!");
 
             await Task.Delay(-1);
+        }
+
+        private async Task OnJoinedGuild(SocketGuild guild)
+        {
+            LogMessage("Joined new guild!");
+            await Initialize_Channels();
+        }
+
+        private static async Task Initialize_Channels()
+        {
+            foreach (var CurrentGuild in _client.Guilds)
+            {
+                string categoryName = "rust-güncelleme┃🔔";
+                string[] channelNames = { "güncelleme-tarihi┃📅", "güncelleme-takipçisi┃💻", "haftalık-mağaza┃🛒", "commits┃📝" };
+
+                var categoryCheck = CurrentGuild.CategoryChannels.FirstOrDefault(c => c.Name == categoryName);
+                ICategoryChannel categoryCurrent;
+
+                if (categoryCheck != null) { LogMessage($"Category already created. | Guild: {CurrentGuild} | Category: {categoryCheck.Id}"); categoryCurrent = categoryCheck; }
+                else { categoryCurrent = await CurrentGuild.CreateCategoryChannelAsync(categoryName); LogMessage($"Category created. | Guild: {CurrentGuild} - Category: {categoryCurrent.Id}"); }
+
+                List<ulong> updateDateChannel_Local_IDS = new List<ulong>();
+                List<ulong> updateTrackerChannel_Local_IDS = new List<ulong>();
+                List<ulong> storeCheckerChannel_Local_IDS = new List<ulong>();
+                List<ulong> commitFollowerChannel_Local_IDS = new List<ulong>();
+
+                for (int i = 0; i < channelNames.Length; i++)
+                {
+                    string channelName = channelNames[i];
+                    var channelCheck = CurrentGuild.TextChannels.FirstOrDefault(c => c.Name == channelName && c.CategoryId == categoryCurrent.Id);
+                    if (channelCheck != null)
+                    {
+                        LogMessage($"Channel already created: {channelCheck.Id}");
+                        switch (i)
+                        {
+                            case 0:
+                                updateDateChannel_Local_IDS.Add(channelCheck.Id);
+                                break;
+
+                            case 1:
+                                updateTrackerChannel_Local_IDS.Add(channelCheck.Id);
+                                break;
+
+                            case 2:
+                                storeCheckerChannel_Local_IDS.Add(channelCheck.Id);
+                                break;
+
+                            case 3:
+                                commitFollowerChannel_Local_IDS.Add(channelCheck.Id);
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        var newChannel = await CurrentGuild.CreateTextChannelAsync(channelName, x => x.CategoryId = categoryCurrent.Id);
+                        await Task.Delay(MessageDelay);
+                        LogMessage($"Channel created: {newChannel.Id}");
+                        switch (i)
+                        {
+                            case 0:
+                                updateDateChannel_Local_IDS.Add(newChannel.Id);
+                                break;
+
+                            case 1:
+                                updateTrackerChannel_Local_IDS.Add(newChannel.Id);
+                                break;
+
+                            case 2:
+                                storeCheckerChannel_Local_IDS.Add(newChannel.Id);
+                                break;
+
+                            case 3:
+                                commitFollowerChannel_Local_IDS.Add(newChannel.Id);
+                                break;
+                        }
+                    }
+                }
+                updateDateChannel_IDS[CurrentGuild.Id] = updateDateChannel_Local_IDS;
+                updateTrackerChannel_IDS[CurrentGuild.Id] = updateTrackerChannel_Local_IDS;
+                storeCheckerChannel_IDS[CurrentGuild.Id] = storeCheckerChannel_Local_IDS;
+                commitFollowerChannel_IDS[CurrentGuild.Id] = commitFollowerChannel_Local_IDS;
+            }
         }
 
         private static async Task Initialize_UpdateChecker()
@@ -213,12 +285,22 @@ namespace RT_Control
             LogMessage("[UpdateChecker] Döngüye giriliyor...");
         }
 
+        private static async Task ChannelChecker()
+        {
+            while (true)
+            {
+                await Initialize_Channels();
+                await Task.Delay(TimeSpan.FromHours(1));
+            }
+        }
+
         private static async Task ResponderRunner()
         {
             while (true)
             {
                 await ResponderUpdate();
-                await Task.Delay(TimeSpan.FromMinutes(5));
+                await SendUpdateDateMessage();
+                await Task.Delay(TimeSpan.FromHours(1));
             }
         }
 
@@ -289,7 +371,6 @@ namespace RT_Control
                         var ourimage = CreateBigImage(skinData);
                         ourimage.Save("skinimage.png", System.Drawing.Imaging.ImageFormat.Png);
 
-                        var channel = _client.GetChannel(_SkinKanalID) as IMessageChannel;
                         var skincount = skinData.Count;
                         float totalcost = 0;
                         foreach (var skin in skinData)
@@ -303,16 +384,52 @@ namespace RT_Control
                         embedBuildformain.WithColor(Discord.Color.Blue);
                         embedBuildformain.WithDescription($"**{skincount}** yeni kostüm mağazaye eklendi.\n\n Toplam Kostüm Değeri: **{totalcost}$**");
                         embedBuildformain.WithUrl("https://store.steampowered.com/itemstore/252490/");
-                        embedBuildformain.WithFooter(DateTime.Now.ToString(), "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no");
-                        await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
+
+                        foreach (var guildId in storeCheckerChannel_IDS.Keys)
+                        {
+                            var guild = _client.GetGuild(guildId);
+                            if (guild == null) continue;
+
+                            foreach (var channelId in storeCheckerChannel_IDS[guildId])
+                            {
+                                var channel = guild.GetTextChannel(channelId);
+                                if (channel != null)
+                                {
+                                    await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
+                                    await Task.Delay(MessageDelay);
+                                }
+                            }
+                        }
 
                         using (var fileStream = new FileStream("skinimage.png", FileMode.Open))
                         {
-                            var memoryStream = new MemoryStream();
-                            fileStream.CopyTo(memoryStream);
-                            memoryStream.Position = 0;
-                            await channel.SendFileAsync(memoryStream, "skinimage.png");
+                            byte[] imageData;
+                            using (var memoryStream = new MemoryStream())
+                            {
+                                fileStream.CopyTo(memoryStream);
+                                imageData = memoryStream.ToArray();
+                            }
+
+                            foreach (var guildId in storeCheckerChannel_IDS.Keys)
+                            {
+                                var guild = _client.GetGuild(guildId);
+                                if (guild == null) continue;
+
+                                foreach (var channelId in storeCheckerChannel_IDS[guildId])
+                                {
+                                    var channel = guild.GetTextChannel(channelId);
+                                    if (channel != null)
+                                    {
+                                        using (var memoryStream = new MemoryStream(imageData))
+                                        {
+                                            await channel.SendFileAsync(memoryStream, "skinimage.png");
+                                            await Task.Delay(MessageDelay);
+                                        }
+                                    }
+                                }
+                            }
                         }
+
                         File.Delete("skinimage.png");
                         storedSkins.Clear();
                         storedSkins.UnionWith(newSkins);
@@ -341,13 +458,32 @@ namespace RT_Control
             var skinPrices = skindata.Select(Skin => Skin.Price).ToList();
             var skinType = skindata.Select(Skin => Skin.Item).ToList();
 
-            int imageSize = (int)Math.Ceiling(Math.Sqrt(imageUrls.Count)); // Calculate the size of the square
-            int squareSize = imageSize * 400; // Set the size of the square (default to 200 pixels)
+            int imageSize = (int)Math.Ceiling(Math.Sqrt(imageUrls.Count));
+            int squareSize = imageSize * 400;
             Bitmap combinedImage = new Bitmap(squareSize, squareSize);
+
+            Bitmap backgroundImage;
+            try
+            {
+                using (WebClient client = new WebClient())
+                {
+                    byte[] imageData = client.DownloadData("https://cdn.discordapp.com/attachments/1243011831891623936/1243016965715525733/back.png?ex=664ff142&is=664e9fc2&hm=a723c7433f7a340fcc3f4e3794fb2540229d562cf4b5eb3cf076f8c6b16e242a&");
+                    using (MemoryStream stream = new MemoryStream(imageData))
+                    {
+                        backgroundImage = new Bitmap(stream);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogMessage("[SkinTracker] An error occurred: " + ex.Message);
+                return null;
+            }
 
             using (Graphics g = Graphics.FromImage(combinedImage))
             {
-                g.Clear(System.Drawing.Color.Transparent); // Set the background to transparent
+                g.DrawImage(backgroundImage, 0, 0, combinedImage.Width, combinedImage.Height);
+
                 int x = 0, y = 0;
                 int index = 0;
 
@@ -362,32 +498,29 @@ namespace RT_Control
                             {
                                 System.Drawing.Image img = System.Drawing.Image.FromStream(stream);
 
-                                // Draw each image at 200x200 size
                                 g.DrawImage(img, x * 400, y * 400, 350, 350);
 
                                 var skinname = skinNames[index];
                                 var skintype = skinType[index];
                                 var skinprice = skinPrices[index];
 
-                                // Draw the text
                                 if (index < imageUrls.Count)
                                 {
                                     Font font = new Font("Arial", 18, FontStyle.Bold);
                                     Font font2 = new Font("Arial", 12);
                                     SizeF textSize = g.MeasureString(skinname, font);
-                                    if (textSize.Width > 400 || textSize.Height > 400) // Check if text fits within 200x200
+                                    if (textSize.Width > 400 || textSize.Height > 400)
                                     {
                                         float scale = Math.Min(400 / textSize.Width, 400 / textSize.Height);
                                         font = new Font("Arial", 18 * scale, FontStyle.Bold);
                                     }
                                     float textX = x * 400 + (400 - textSize.Width) / 2;
-                                    float textY = (y + 1) * 400 - textSize.Height; // Place the text at the bottom of the image
+                                    float textY = (y + 1) * 400 - textSize.Height;
                                     g.DrawString(skinname, font, Brushes.White, new PointF(textX, textY - 30));
                                     g.DrawString(skinprice, font, Brushes.ForestGreen, new PointF(textX, textY));
                                     g.DrawString(skintype, font2, Brushes.DarkGray, new PointF(textX + 75, textY + 5));
                                 }
 
-                                // Draw the border
                                 using (Pen pen = new Pen(System.Drawing.Color.Black, 2))
                                 {
                                     g.DrawRectangle(pen, x * 400, y * 400, 400, 400);
@@ -400,15 +533,9 @@ namespace RT_Control
                         LogMessage("[SkinTracker] Creating image fail: " + ex.Message);
                     }
 
-                    index++;
-                    x++;
-                    if (x >= imageSize)
-                    {
-                        x = 0;
-                        y++;
-                    }
-                    if (index >= imageSize * imageSize) // If it exceeds the square size, exit the loop
-                        break;
+                    index++; x++;
+                    if (x >= imageSize) { x = 0; y++; }
+                    if (index >= imageSize * imageSize) break;
                 }
             }
 
@@ -433,7 +560,7 @@ namespace RT_Control
         private static List<SkinItem> ParseSkins(string html)
         {
             List<SkinItem> skinItems = new List<SkinItem>();
-            HtmlDocument doc = new HtmlDocument();
+            HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
             doc.LoadHtml(html);
             var storeItems = doc.DocumentNode.SelectNodes("//div[@class='store-item full-height']");
             List<string> imageUrls = ExtractImageUrlsStartingWith(html);
@@ -549,11 +676,23 @@ namespace RT_Control
                 embedBuilder.WithDescription(description);
                 embedBuilder.WithColor(Discord.Color.Blue);
                 embedBuilder.WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj");
-                embedBuilder.WithFooter(DateTime.Now.ToString(), "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no");
                 embedBuilder.AddField("Sürüm Numarası Değişimi:", changenumber_t, true); ;
 
-                var channel = _client.GetChannel(_UpdateKanalID) as IMessageChannel;
-                await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
+                foreach (var guildId in updateTrackerChannel_IDS.Keys)
+                {
+                    var guild = _client.GetGuild(guildId);
+                    if (guild == null) continue;
+
+                    foreach (var channelId in updateTrackerChannel_IDS[guildId])
+                    {
+                        var channel = guild.GetTextChannel(channelId);
+                        if (channel != null)
+                        {
+                            await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
+                            await Task.Delay(MessageDelay);
+                        }
+                    }
+                }
             }
         }
 
@@ -597,8 +736,21 @@ namespace RT_Control
                                 newEmbedBuilder.WithColor(Discord.Color.Blue);
                                 newEmbedBuilder.WithFooter($"ID: {commit.id} | Change: {commit.changeset} | {DateTime.Now.ToString()}");
 
-                                var channel = _client.GetChannel(_CommitKanalID) as IMessageChannel;
-                                await channel.SendMessageAsync("", false, newEmbedBuilder.Build());
+                                foreach (var guildId in commitFollowerChannel_IDS.Keys)
+                                {
+                                    var guild = _client.GetGuild(guildId);
+                                    if (guild == null) continue;
+
+                                    foreach (var channelId in commitFollowerChannel_IDS[guildId])
+                                    {
+                                        var channel = guild.GetTextChannel(channelId);
+                                        if (channel != null)
+                                        {
+                                            await channel.SendMessageAsync("", false, newEmbedBuilder.Build());
+                                            await Task.Delay(MessageDelay);
+                                        }
+                                    }
+                                }
                             }
                         }
                         storedCommits.UnionWith(newCommits);
@@ -646,41 +798,48 @@ namespace RT_Control
             DateTimeOffset LocalTimeOffset = DateTimeOffset.FromUnixTimeSeconds(_nextUpdateTimestamp);
             DateTime LocalTime = LocalTimeOffset.LocalDateTime;
             LogMessage($"[Responder] Sonraki Güncelleme Tarihi: {LocalTime}");
+
             return Task.CompletedTask;
         }
 
-        private static Task MessageReceived(SocketMessage message)
+        private static async Task SendUpdateDateMessage()
         {
-            IUser user = message.Author;
-            string userTag = $"{user.Mention}";
+            LogMessage("[Responder] Güncelleme sorusu cevaplanıyor...");
+            EmbedBuilder embedBuilder = new EmbedBuilder();
+            embedBuilder.WithTitle(":information_source:  **Güncelleme Bilgisi**  :information_source:");
+            embedBuilder.WithDescription("Her ayın ilk perşembesi (Yaz Dönemi 21:00 - Kış Dönemi 22:00) gelen güncelleme ile tüm sunuculara **Zorunlu Harita Sıfırlaması** atılır.\n**BP Sıfırlaması**(Blueprint/Öğrenilen Eşyalar) ise sunucu sahibinin isteğine bağlıdır.");
+            embedBuilder.WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj");
+            embedBuilder.AddField("Sonraki Güncelleme Tarihi:", $"<t:{_nextUpdateTimestamp}:F>", false);
+            embedBuilder.AddField("Sonraki Güncellemeye Kalan Zaman:", $"<t:{_nextUpdateTimestamp}:R>", false);
+            embedBuilder.WithColor(Discord.Color.Blue);
 
-            if (message.Channel.Id == _SohbetKanalID)
+            foreach (var guildId in updateDateChannel_IDS.Keys)
             {
-                if (message.Author.Id != _client.CurrentUser.Id)
-                {
-                    if (updateKeywords.Any(keyword => message.Content.ToLower().Contains(keyword)))
-                    {
-                        LogMessage("[Responder] Güncelleme sorusu cevaplanıyor...");
-                        EmbedBuilder embedBuilder = new EmbedBuilder();
-                        embedBuilder.WithTitle(":information_source:  **Güncelleme Bilgisi**  :information_source:");
-                        embedBuilder.WithDescription("`Her ayın ilk perşembesi (Yaz Dönemi 21:00 - Kış Dönemi 22:00) gelen güncelleme ile tüm sunuculara` ***Zorunlu Harita Sıfırlaması*** `atılır.\nBP(Blueprint/Öğrenilen Eşyalar) Sıfırlaması ise sunucu sahibinin isteğine bağlıdır.`");
-                        embedBuilder.WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj");
-                        embedBuilder.WithFooter(DateTime.Now.ToString(), "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no");
-                        embedBuilder.AddField("Sonraki Güncelleme Tarihi:", $"<t:{_nextUpdateTimestamp}:F>", false);
-                        embedBuilder.AddField("Sonraki Güncellemeye Kalan Zaman:", $"<t:{_nextUpdateTimestamp}:R>", false);
-                        embedBuilder.AddField("Soran Kullanıcı", userTag, false);
-                        embedBuilder.WithColor(Discord.Color.Blue);
+                var guild = _client.GetGuild(guildId);
+                if (guild == null) continue;
 
-                        return message.Channel.SendMessageAsync("", false, embedBuilder.Build());
+                foreach (var channelId in updateDateChannel_IDS[guildId])
+                {
+                    var channel = guild.GetTextChannel(channelId);
+                    if (channel != null)
+                    {
+                        var messages = await channel.GetMessagesAsync().FlattenAsync();
+                        await channel.DeleteMessagesAsync(messages);
+                        await Task.Delay(MessageDelay);
+                        await channel.SendMessageAsync("", false, embedBuilder.Build());
+                        await Task.Delay(MessageDelay);
                     }
                 }
             }
-            return Task.CompletedTask;
         }
 
         private Task BotReady()
         {
+            
+            _client.SetCustomStatusAsync("Rust Güncelleme Notları");
+
             _botReady = true;
+
             return Task.CompletedTask;
         }
 
