@@ -952,10 +952,16 @@ namespace RT_Control
                                 await webhookLogs.SendMessageAsync($"No Perms. | Guild: {guild}");
                                 return;
                             }
-                            var messages = await channel.GetMessagesAsync().FlattenAsync();
-                            await channel.DeleteMessagesAsync(messages);
-                            await Task.Delay(MessageDelay);
-                            await channel.SendMessageAsync("", false, embedBuilder.Build());
+                            var messages = await channel.GetMessagesAsync(limit: 1).FlattenAsync();
+                            var lastMessage = messages.FirstOrDefault() as IUserMessage;
+                            if (lastMessage != null && lastMessage.Author.Id == _client.CurrentUser.Id)
+                            {
+                                await lastMessage.ModifyAsync(msg => msg.Embed = embedBuilder.Build());
+                            }
+                            else
+                            {
+                                await channel.SendMessageAsync("", false, embedBuilder.Build());
+                            }
                             await Task.Delay(MessageDelay);
                         }
                         catch (Exception ex)
