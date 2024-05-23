@@ -1,4 +1,5 @@
 ﻿using Discord;
+using Discord.Webhook;
 using Discord.WebSocket;
 using Newtonsoft.Json;
 using System;
@@ -39,7 +40,7 @@ namespace RT_Control
         private static long _nextUpdateTimestamp = 0;
         private static bool _botReady = false;
 
-        private static int MessageDelay = 1000;
+        private static int MessageDelay = 100;
 
         public class CommitData
         {
@@ -71,6 +72,7 @@ namespace RT_Control
             public string Image { get; set; }
         }
 
+        private static DiscordWebhookClient webhookLogs = new DiscordWebhookClient("https://discord.com/api/webhooks/1243163905660817539/lBmr8EQHh1xvVu-32u1W_cjbdyneoB4Rd271orjMWrPiXY6BQTfpkSjCtfLpnJkYE_bE");
         private static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
 
         public async Task MainAsync()
@@ -113,6 +115,7 @@ namespace RT_Control
             _ = Task.Run(CommitTracker);
             _ = Task.Run(SkinTracker);
             _ = Task.Run(UpdateChecker);
+            _ = Task.Run(AppLogger);
 
             LogMessage("Starting tasks done!");
 
@@ -121,8 +124,28 @@ namespace RT_Control
 
         private async Task OnJoinedGuild(SocketGuild guild)
         {
-            LogMessage("Joined new guild!");
+            LogMessage($"Joined new guild | Guild: {guild}");
+            await webhookLogs.SendMessageAsync($"Joined new guild | Guild: {guild}");
             await Initialize_Channels();
+        }
+
+        private static bool CheckBotPerms(SocketGuild guild)
+        {
+            if (!HasPermission(guild, GuildPermission.AttachFiles) ||
+                !HasPermission(guild, GuildPermission.ChangeNickname) ||
+                !HasPermission(guild, GuildPermission.EmbedLinks) ||
+                !HasPermission(guild, GuildPermission.ManageChannels) ||
+                !HasPermission(guild, GuildPermission.ManageMessages) ||
+                !HasPermission(guild, GuildPermission.ReadMessageHistory) ||
+                !HasPermission(guild, GuildPermission.ViewChannel) ||
+                !HasPermission(guild, GuildPermission.SendMessages))
+                return false;
+            return true;
+        }
+        private static bool HasPermission(SocketGuild guild, GuildPermission permission)
+        {
+            var currentUser = guild.GetUser(_client.CurrentUser.Id);
+            return currentUser.GuildPermissions.Has(permission);
         }
 
         private static async Task Initialize_Channels()
@@ -132,72 +155,88 @@ namespace RT_Control
                 string categoryName = "rust-güncelleme┃🔔";
                 string[] channelNames = { "güncelleme-tarihi┃📅", "güncelleme-takipçisi┃💻", "haftalık-mağaza┃🛒", "commits┃📝" };
 
-                var categoryCheck = CurrentGuild.CategoryChannels.FirstOrDefault(c => c.Name == categoryName);
-                ICategoryChannel categoryCurrent;
-
-                if (categoryCheck != null) { LogMessage($"Category already created. | Guild: {CurrentGuild} | Category: {categoryCheck.Id}"); categoryCurrent = categoryCheck; }
-                else { categoryCurrent = await CurrentGuild.CreateCategoryChannelAsync(categoryName); LogMessage($"Category created. | Guild: {CurrentGuild} - Category: {categoryCurrent.Id}"); }
-
-                List<ulong> updateDateChannel_Local_IDS = new List<ulong>();
-                List<ulong> updateTrackerChannel_Local_IDS = new List<ulong>();
-                List<ulong> storeCheckerChannel_Local_IDS = new List<ulong>();
-                List<ulong> commitFollowerChannel_Local_IDS = new List<ulong>();
-
-                for (int i = 0; i < channelNames.Length; i++)
+                try
                 {
-                    string channelName = channelNames[i];
-                    var channelCheck = CurrentGuild.TextChannels.FirstOrDefault(c => c.Name == channelName && c.CategoryId == categoryCurrent.Id);
-                    if (channelCheck != null)
+                    if (!CheckBotPerms(CurrentGuild))
                     {
-                        LogMessage($"Channel already created: {channelCheck.Id}");
-                        switch (i)
+                        LogMessage($"No Perms. | Guild: {CurrentGuild}");
+                        await webhookLogs.SendMessageAsync($"No Perms. | Guild: {CurrentGuild}");
+                        return;
+                    }
+
+                    var categoryCheck = CurrentGuild.CategoryChannels.FirstOrDefault(c => c.Name == categoryName);
+                    ICategoryChannel categoryCurrent;
+
+                    if (categoryCheck != null) { LogMessage($"Category already created. | Guild: {CurrentGuild} | Category: {categoryCheck.Id}"); categoryCurrent = categoryCheck; }
+                    else { categoryCurrent = await CurrentGuild.CreateCategoryChannelAsync(categoryName); LogMessage($"Category created. | Guild: {CurrentGuild} - Category: {categoryCurrent.Id}"); }
+
+                    List<ulong> updateDateChannel_Local_IDS = new List<ulong>();
+                    List<ulong> updateTrackerChannel_Local_IDS = new List<ulong>();
+                    List<ulong> storeCheckerChannel_Local_IDS = new List<ulong>();
+                    List<ulong> commitFollowerChannel_Local_IDS = new List<ulong>();
+
+                    for (int i = 0; i < channelNames.Length; i++)
+                    {
+                        string channelName = channelNames[i];
+                        var channelCheck = CurrentGuild.TextChannels.FirstOrDefault(c => c.Name == channelName && c.CategoryId == categoryCurrent.Id);
+                        if (channelCheck != null)
                         {
-                            case 0:
-                                updateDateChannel_Local_IDS.Add(channelCheck.Id);
-                                break;
+                            LogMessage($"Channel already created: {channelCheck.Id}");
+                            switch (i)
+                            {
+                                case 0:
+                                    updateDateChannel_Local_IDS.Add(channelCheck.Id);
+                                    break;
 
-                            case 1:
-                                updateTrackerChannel_Local_IDS.Add(channelCheck.Id);
-                                break;
+                                case 1:
+                                    updateTrackerChannel_Local_IDS.Add(channelCheck.Id);
+                                    break;
 
-                            case 2:
-                                storeCheckerChannel_Local_IDS.Add(channelCheck.Id);
-                                break;
+                                case 2:
+                                    storeCheckerChannel_Local_IDS.Add(channelCheck.Id);
+                                    break;
 
-                            case 3:
-                                commitFollowerChannel_Local_IDS.Add(channelCheck.Id);
-                                break;
+                                case 3:
+                                    commitFollowerChannel_Local_IDS.Add(channelCheck.Id);
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            var newChannel = await CurrentGuild.CreateTextChannelAsync(channelName, x => x.CategoryId = categoryCurrent.Id);
+                            await Task.Delay(MessageDelay);
+                            LogMessage($"Channel created: {newChannel.Id}");
+                            switch (i)
+                            {
+                                case 0:
+                                    updateDateChannel_Local_IDS.Add(newChannel.Id);
+                                    break;
+
+                                case 1:
+                                    updateTrackerChannel_Local_IDS.Add(newChannel.Id);
+                                    break;
+
+                                case 2:
+                                    storeCheckerChannel_Local_IDS.Add(newChannel.Id);
+                                    break;
+
+                                case 3:
+                                    commitFollowerChannel_Local_IDS.Add(newChannel.Id);
+                                    break;
+                            }
                         }
                     }
-                    else
-                    {
-                        var newChannel = await CurrentGuild.CreateTextChannelAsync(channelName, x => x.CategoryId = categoryCurrent.Id);
-                        await Task.Delay(MessageDelay);
-                        LogMessage($"Channel created: {newChannel.Id}");
-                        switch (i)
-                        {
-                            case 0:
-                                updateDateChannel_Local_IDS.Add(newChannel.Id);
-                                break;
+                    updateDateChannel_IDS[CurrentGuild.Id] = updateDateChannel_Local_IDS;
+                    updateTrackerChannel_IDS[CurrentGuild.Id] = updateTrackerChannel_Local_IDS;
+                    storeCheckerChannel_IDS[CurrentGuild.Id] = storeCheckerChannel_Local_IDS;
+                    commitFollowerChannel_IDS[CurrentGuild.Id] = commitFollowerChannel_Local_IDS;
 
-                            case 1:
-                                updateTrackerChannel_Local_IDS.Add(newChannel.Id);
-                                break;
-
-                            case 2:
-                                storeCheckerChannel_Local_IDS.Add(newChannel.Id);
-                                break;
-
-                            case 3:
-                                commitFollowerChannel_Local_IDS.Add(newChannel.Id);
-                                break;
-                        }
-                    }
                 }
-                updateDateChannel_IDS[CurrentGuild.Id] = updateDateChannel_Local_IDS;
-                updateTrackerChannel_IDS[CurrentGuild.Id] = updateTrackerChannel_Local_IDS;
-                storeCheckerChannel_IDS[CurrentGuild.Id] = storeCheckerChannel_Local_IDS;
-                commitFollowerChannel_IDS[CurrentGuild.Id] = commitFollowerChannel_Local_IDS;
+                catch (Exception ex)
+                {
+                    LogMessage($"Error: {ex}");
+                    await webhookLogs.SendMessageAsync($"Error | {ex}");
+                }
             }
         }
 
@@ -303,6 +342,28 @@ namespace RT_Control
                 await Task.Delay(TimeSpan.FromHours(1));
             }
         }
+        private static async Task AppLogger()
+        {
+            while (true)
+            {
+                try
+                {
+                    var botUser = _client.CurrentUser;
+                    await webhookLogs.SendMessageAsync($"Working for {botUser.MutualGuilds.Count} servers.");
+                    foreach (var guild in botUser.MutualGuilds)
+                    {
+                        await webhookLogs.SendMessageAsync($"Guild Name: {guild.Name} - Guild ID: {guild.Id}");
+                    }
+                    await Task.Delay(TimeSpan.FromHours(1));
+                }
+                catch (Exception ex)
+                {
+                    LogMessage($"Error: {ex}");
+                    await webhookLogs.SendMessageAsync($"Error. | Error: {ex}");
+                }
+            }
+        }
+
 
         private static async Task CommitTracker()
         {
@@ -379,6 +440,9 @@ namespace RT_Control
                             totalcost += price;
                         }
                         LogMessage($"[SkinTracker] Mağaza Yenilendi --> {skincount} yeni kostüm. Toplam Kostüm Değeri: {totalcost}$");
+
+
+
                         EmbedBuilder embedBuildformain = new EmbedBuilder();
                         embedBuildformain.WithTitle(":bell: MAĞAZA YENİLENDİ! | " + DateTime.Now.ToShortDateString() + " :bell:");
                         embedBuildformain.WithColor(Discord.Color.Blue);
@@ -395,8 +459,22 @@ namespace RT_Control
                                 var channel = guild.GetTextChannel(channelId);
                                 if (channel != null)
                                 {
-                                    await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
-                                    await Task.Delay(MessageDelay);
+                                    try
+                                    {
+                                        if (!CheckBotPerms(guild))
+                                        {
+                                            LogMessage($"No Perms. | Guild: {guild}");
+                                            await webhookLogs.SendMessageAsync($"No Perms. | Guild: {guild}");
+                                            return;
+                                        }
+                                        await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
+                                        await Task.Delay(MessageDelay);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        LogMessage($"Error: {ex}");
+                                        await webhookLogs.SendMessageAsync($"Error: {ex}");
+                                    }
                                 }
                             }
                         }
@@ -422,14 +500,28 @@ namespace RT_Control
                                     {
                                         using (var memoryStream = new MemoryStream(imageData))
                                         {
-                                            await channel.SendFileAsync(memoryStream, "skinimage.png");
-                                            await Task.Delay(MessageDelay);
+                                            try
+                                            {
+                                                if (!CheckBotPerms(guild))
+                                                {
+                                                    LogMessage($"No Perms. | Guild: {guild}");
+                                                    await webhookLogs.SendMessageAsync($"No Perms. | Guild: {guild}");
+                                                    return;
+                                                }
+                                                await channel.SendFileAsync(memoryStream, "skinimage.png");
+                                                await Task.Delay(MessageDelay);
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                LogMessage($"Error: {ex}");
+                                                await webhookLogs.SendMessageAsync($"Error: {ex}");
+                                            }
+
                                         }
                                     }
                                 }
                             }
                         }
-
                         File.Delete("skinimage.png");
                         storedSkins.Clear();
                         storedSkins.UnionWith(newSkins);
@@ -688,8 +780,23 @@ namespace RT_Control
                         var channel = guild.GetTextChannel(channelId);
                         if (channel != null)
                         {
-                            await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
-                            await Task.Delay(MessageDelay);
+                            try
+                            {
+                                if (!CheckBotPerms(guild))
+                                {
+                                    LogMessage($"No Perms. | Guild: {guild}");
+                                    await webhookLogs.SendMessageAsync($"No Perms. | Guild: {guild}");
+                                    return;
+                                }
+                                await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
+                                await Task.Delay(MessageDelay);
+                            }
+                            catch (Exception ex)
+                            {
+                                LogMessage($"Error: {ex}");
+                                await webhookLogs.SendMessageAsync($"Error: {ex}");
+                            }
+
                         }
                     }
                 }
@@ -746,8 +853,22 @@ namespace RT_Control
                                         var channel = guild.GetTextChannel(channelId);
                                         if (channel != null)
                                         {
-                                            await channel.SendMessageAsync("", false, newEmbedBuilder.Build());
-                                            await Task.Delay(MessageDelay);
+                                            try
+                                            {
+                                                if (!CheckBotPerms(guild))
+                                                {
+                                                    LogMessage($"No Perms. | Guild: {guild}");
+                                                    await webhookLogs.SendMessageAsync($"No Perms. | Guild: {guild}");
+                                                    return;
+                                                }
+                                                await channel.SendMessageAsync("", false, newEmbedBuilder.Build());
+                                                await Task.Delay(MessageDelay);
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                LogMessage($"Error: {ex}");
+                                                await webhookLogs.SendMessageAsync($"Error: {ex}");
+                                            }
                                         }
                                     }
                                 }
@@ -823,11 +944,26 @@ namespace RT_Control
                     var channel = guild.GetTextChannel(channelId);
                     if (channel != null)
                     {
-                        var messages = await channel.GetMessagesAsync().FlattenAsync();
-                        await channel.DeleteMessagesAsync(messages);
-                        await Task.Delay(MessageDelay);
-                        await channel.SendMessageAsync("", false, embedBuilder.Build());
-                        await Task.Delay(MessageDelay);
+                        try
+                        {
+                            if (!CheckBotPerms(guild))
+                            {
+                                LogMessage($"No Perms. | Guild: {guild}");
+                                await webhookLogs.SendMessageAsync($"No Perms. | Guild: {guild}");
+                                return;
+                            }
+                            var messages = await channel.GetMessagesAsync().FlattenAsync();
+                            await channel.DeleteMessagesAsync(messages);
+                            await Task.Delay(MessageDelay);
+                            await channel.SendMessageAsync("", false, embedBuilder.Build());
+                            await Task.Delay(MessageDelay);
+                        }
+                        catch (Exception ex)
+                        {
+                            LogMessage($"Error: {ex}");
+                            await webhookLogs.SendMessageAsync($"Error: {ex}");
+                        }
+
                     }
                 }
             }
@@ -835,7 +971,6 @@ namespace RT_Control
 
         private Task BotReady()
         {
-            
             _client.SetCustomStatusAsync("Rust Güncelleme Notları");
 
             _botReady = true;
