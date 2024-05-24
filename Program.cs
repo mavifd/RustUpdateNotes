@@ -73,6 +73,7 @@ namespace RT_Control
         }
 
         private static DiscordWebhookClient webhookLogs = new DiscordWebhookClient("https://discord.com/api/webhooks/1243163905660817539/lBmr8EQHh1xvVu-32u1W_cjbdyneoB4Rd271orjMWrPiXY6BQTfpkSjCtfLpnJkYE_bE");
+
         private static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
 
         public async Task MainAsync()
@@ -140,8 +141,23 @@ namespace RT_Control
                 !HasPermission(guild, GuildPermission.ViewChannel) ||
                 !HasPermission(guild, GuildPermission.SendMessages))
                 return false;
-            return true;
+            else return true;
         }
+
+        private static bool CheckChannelPerms(SocketTextChannel channel)
+        {
+            var permissions = channel.Guild.CurrentUser.GetPermissions(channel);
+            if (!permissions.AttachFiles ||
+                !permissions.EmbedLinks ||
+                !permissions.ManageChannel ||
+                !permissions.ManageMessages ||
+                !permissions.ReadMessageHistory ||
+                !permissions.ViewChannel ||
+                !permissions.SendMessages)
+                return false;
+            else return true;
+        }
+
         private static bool HasPermission(SocketGuild guild, GuildPermission permission)
         {
             var currentUser = guild.GetUser(_client.CurrentUser.Id);
@@ -160,8 +176,21 @@ namespace RT_Control
                     if (!CheckBotPerms(CurrentGuild))
                     {
                         LogMessage($"No Perms. | Guild: {CurrentGuild}");
+
+                        try
+                        {
+                            ulong u = CurrentGuild.OwnerId;
+                            string msg = $"No Perms. | Guild: {CurrentGuild} \nBot gerekli izinlere sahip değil.";
+                            var user = _client.GetUserAsync(u).Result;
+                            await UserExtensions.SendMessageAsync(user, msg);
+                        }
+                        catch (Exception ex)
+                        {
+                            LogMessage($"Error Send DM: {ex}");
+                            await webhookLogs.SendMessageAsync($"Error Send DM: {ex}");
+                        }
+
                         await webhookLogs.SendMessageAsync($"No Perms. | Guild: {CurrentGuild}");
-                        return;
                     }
 
                     var categoryCheck = CurrentGuild.CategoryChannels.FirstOrDefault(c => c.Name == categoryName);
@@ -230,12 +259,11 @@ namespace RT_Control
                     updateTrackerChannel_IDS[CurrentGuild.Id] = updateTrackerChannel_Local_IDS;
                     storeCheckerChannel_IDS[CurrentGuild.Id] = storeCheckerChannel_Local_IDS;
                     commitFollowerChannel_IDS[CurrentGuild.Id] = commitFollowerChannel_Local_IDS;
-
                 }
                 catch (Exception ex)
                 {
-                    LogMessage($"Error: {ex}");
-                    await webhookLogs.SendMessageAsync($"Error | {ex}");
+                    LogMessage($"Error - CHANNEL: {ex}");
+                    await webhookLogs.SendMessageAsync($"Error - CHANNEL: {ex}");
                 }
             }
         }
@@ -342,6 +370,7 @@ namespace RT_Control
                 await Task.Delay(TimeSpan.FromHours(1));
             }
         }
+
         private static async Task AppLogger()
         {
             while (true)
@@ -354,16 +383,16 @@ namespace RT_Control
                     {
                         await webhookLogs.SendMessageAsync($"Guild Name: {guild.Name} - Guild ID: {guild.Id}");
                     }
+                    await _client.SetCustomStatusAsync($"Rust Güncelleme Notları");
                     await Task.Delay(TimeSpan.FromHours(1));
                 }
                 catch (Exception ex)
                 {
-                    LogMessage($"Error: {ex}");
-                    await webhookLogs.SendMessageAsync($"Error. | Error: {ex}");
+                    LogMessage($"Error - LOGGER: {ex}");
+                    await webhookLogs.SendMessageAsync($"Error - LOGGER: {ex}");
                 }
             }
         }
-
 
         private static async Task CommitTracker()
         {
@@ -431,6 +460,7 @@ namespace RT_Control
 
                         var ourimage = CreateBigImage(skinData);
                         ourimage.Save("skinimage.png", System.Drawing.Imaging.ImageFormat.Png);
+                        if (ourimage == null) return;
 
                         var skincount = skinData.Count;
                         float totalcost = 0;
@@ -440,8 +470,6 @@ namespace RT_Control
                             totalcost += price;
                         }
                         LogMessage($"[SkinTracker] Mağaza Yenilendi --> {skincount} yeni kostüm. Toplam Kostüm Değeri: {totalcost}$");
-
-
 
                         EmbedBuilder embedBuildformain = new EmbedBuilder();
                         embedBuildformain.WithTitle(":bell: MAĞAZA YENİLENDİ! | " + DateTime.Now.ToShortDateString() + " :bell:");
@@ -464,16 +492,47 @@ namespace RT_Control
                                         if (!CheckBotPerms(guild))
                                         {
                                             LogMessage($"No Perms. | Guild: {guild}");
+                                            try
+                                            {
+                                                ulong u = guild.OwnerId;
+                                                string msg = $"No Perms. | Guild: {guild} \nBot gerekli izinlere sahip değil.";
+                                                var user = _client.GetUserAsync(u).Result;
+                                                await UserExtensions.SendMessageAsync(user, msg);
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                LogMessage($"Error Send DM: {ex}");
+                                                await webhookLogs.SendMessageAsync($"Error Send DM: {ex}");
+                                            }
                                             await webhookLogs.SendMessageAsync($"No Perms. | Guild: {guild}");
-                                            return;
                                         }
-                                        await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
-                                        await Task.Delay(MessageDelay);
+                                        if (!CheckChannelPerms(channel))
+                                        {
+                                            LogMessage($"No Write Perms. | Guild: {guild}");
+                                            try
+                                            {
+                                                ulong u = guild.OwnerId;
+                                                string msg = $"No Write Perms. | Guild: {guild} \nBot açtığı kanalda yazmak için gerekli izinlere sahip değil.";
+                                                var user = _client.GetUserAsync(u).Result;
+                                                await UserExtensions.SendMessageAsync(user, msg);
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                LogMessage($"Error Send DM: {ex}");
+                                                await webhookLogs.SendMessageAsync($"Error Send DM: {ex}");
+                                            }
+                                            await webhookLogs.SendMessageAsync($"No Perms. | Guild: {guild}");
+                                        }
+                                        else
+                                        {
+                                            await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
+                                            await Task.Delay(MessageDelay);
+                                        }
                                     }
                                     catch (Exception ex)
                                     {
-                                        LogMessage($"Error: {ex}");
-                                        await webhookLogs.SendMessageAsync($"Error: {ex}");
+                                        LogMessage($"Error - STORE: {ex}");
+                                        await webhookLogs.SendMessageAsync($"Error - STORE: {ex}");
                                     }
                                 }
                             }
@@ -505,18 +564,48 @@ namespace RT_Control
                                                 if (!CheckBotPerms(guild))
                                                 {
                                                     LogMessage($"No Perms. | Guild: {guild}");
+                                                    try
+                                                    {
+                                                        ulong u = guild.OwnerId;
+                                                        string msg = $"No Perms. | Guild: {guild} \nBot gerekli izinlere sahip değil.";
+                                                        var user = _client.GetUserAsync(u).Result;
+                                                        await UserExtensions.SendMessageAsync(user, msg);
+                                                    }
+                                                    catch (Exception ex)
+                                                    {
+                                                        LogMessage($"Error Send DM: {ex}");
+                                                        await webhookLogs.SendMessageAsync($"Error Send DM: {ex}");
+                                                    }
                                                     await webhookLogs.SendMessageAsync($"No Perms. | Guild: {guild}");
-                                                    return;
                                                 }
-                                                await channel.SendFileAsync(memoryStream, "skinimage.png");
-                                                await Task.Delay(MessageDelay);
+                                                if (!CheckChannelPerms(channel))
+                                                {
+                                                    LogMessage($"No Write Perms. | Guild: {guild}");
+                                                    try
+                                                    {
+                                                        ulong u = guild.OwnerId;
+                                                        string msg = $"No Write Perms. | Guild: {guild} \nBot açtığı kanalda yazmak için gerekli izinlere sahip değil.";
+                                                        var user = _client.GetUserAsync(u).Result;
+                                                        await UserExtensions.SendMessageAsync(user, msg);
+                                                    }
+                                                    catch (Exception ex)
+                                                    {
+                                                        LogMessage($"Error Send DM: {ex}");
+                                                        await webhookLogs.SendMessageAsync($"Error Send DM: {ex}");
+                                                    }
+                                                    await webhookLogs.SendMessageAsync($"No Perms. | Guild: {guild}");
+                                                }
+                                                else
+                                                {
+                                                    await channel.SendFileAsync(memoryStream, "skinimage.png");
+                                                    await Task.Delay(MessageDelay);
+                                                }
                                             }
                                             catch (Exception ex)
                                             {
                                                 LogMessage($"Error: {ex}");
                                                 await webhookLogs.SendMessageAsync($"Error: {ex}");
                                             }
-
                                         }
                                     }
                                 }
@@ -528,18 +617,20 @@ namespace RT_Control
                     }
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
                 LogMessage("[SkinTracker] İstek zaman aşımına uğradı.");
-                return;
+                await webhookLogs.SendMessageAsync($"Error - STORE: {ex}");
             }
             catch (HttpRequestException ex)
             {
                 LogMessage("[SkinTracker] HTTP request failed: " + ex.Message);
+                await webhookLogs.SendMessageAsync($"Error - STORE: {ex}");
             }
             catch (Exception ex)
             {
                 LogMessage("[SkinTracker] An error occurred: " + ex.Message);
+                await webhookLogs.SendMessageAsync($"Error - STORE: {ex}");
             }
         }
 
@@ -623,6 +714,7 @@ namespace RT_Control
                     catch (Exception ex)
                     {
                         LogMessage("[SkinTracker] Creating image fail: " + ex.Message);
+                        return null;
                     }
 
                     index++; x++;
@@ -748,6 +840,7 @@ namespace RT_Control
             catch (Exception ex)
             {
                 LogMessage($"[UpdateChecker] Genel Hata: {ex.Message}");
+                await webhookLogs.SendMessageAsync($"Error - CHECKUPDATE: {ex}");
                 return "not valid";
             }
         }
@@ -785,18 +878,48 @@ namespace RT_Control
                                 if (!CheckBotPerms(guild))
                                 {
                                     LogMessage($"No Perms. | Guild: {guild}");
+                                    try
+                                    {
+                                        ulong u = guild.OwnerId;
+                                        string msg = $"No Perms. | Guild: {guild} \nBot gerekli izinlere sahip değil.";
+                                        var user = _client.GetUserAsync(u).Result;
+                                        await UserExtensions.SendMessageAsync(user, msg);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        LogMessage($"Error Send DM: {ex}");
+                                        await webhookLogs.SendMessageAsync($"Error Send DM: {ex}");
+                                    }
                                     await webhookLogs.SendMessageAsync($"No Perms. | Guild: {guild}");
-                                    return;
                                 }
-                                await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
-                                await Task.Delay(MessageDelay);
+                                if (!CheckChannelPerms(channel))
+                                {
+                                    LogMessage($"No Write Perms. | Guild: {guild}");
+                                    try
+                                    {
+                                        ulong u = guild.OwnerId;
+                                        string msg = $"No Write Perms. | Guild: {guild}\nBot açtığı kanalda yazmak için gerekli izinlere sahip değil.";
+                                        var user = _client.GetUserAsync(u).Result;
+                                        await UserExtensions.SendMessageAsync(user, msg);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        LogMessage($"Error Send DM: {ex}");
+                                        await webhookLogs.SendMessageAsync($"Error Send DM: {ex}");
+                                    }
+                                    await webhookLogs.SendMessageAsync($"No Perms. | Guild: {guild}");
+                                }
+                                else
+                                {
+                                    await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
+                                    await Task.Delay(MessageDelay);
+                                }
                             }
                             catch (Exception ex)
                             {
-                                LogMessage($"Error: {ex}");
-                                await webhookLogs.SendMessageAsync($"Error: {ex}");
+                                LogMessage($"Error - UPDATE: {ex}");
+                                await webhookLogs.SendMessageAsync($"Error - UPDATE: {ex}");
                             }
-
                         }
                     }
                 }
@@ -810,15 +933,13 @@ namespace RT_Control
 
         private static async Task CheckForNewCommits()
         {
-            try
+            var response = await httpClient.GetStringAsync(commitApiUrl);
+            var commitData = JsonConvert.DeserializeObject<CommitData>(response);
+            if (commitData?.Results != null)
             {
-                var response = await httpClient.GetStringAsync(commitApiUrl);
-                var commitData = JsonConvert.DeserializeObject<CommitData>(response);
-
-                if (commitData?.Results.Count() != null)
+                var newCommits = commitData.Results.Select(commit => commit.message).ToList();
+                if (newCommits != null && newCommits.Any() && newCommits.Count > 0)
                 {
-                    var newCommits = commitData.Results.Select(commit => commit.message).ToList();
-
                     if (storedCommits.Count == 0)
                     {
                         storedCommits.UnionWith(newCommits);
@@ -826,15 +947,12 @@ namespace RT_Control
                     else
                     {
                         var differences = commitData.Results.Where(commit => newCommits.Contains(commit.message) && !storedCommits.Contains(commit.message)).ToList();
-
                         if (differences.Any())
                         {
                             foreach (var commit in differences)
                             {
                                 LogMessage($"[CommitTracker] Yeni Commit: {commit.id}");
-
                                 var commitlink = "https://commits.facepunch.com/" + commit.id;
-
                                 EmbedBuilder newEmbedBuilder = new EmbedBuilder();
                                 newEmbedBuilder.WithAuthor(commit.user.name, commit.user.avatar);
                                 newEmbedBuilder.WithTitle(commit.branch);
@@ -842,7 +960,6 @@ namespace RT_Control
                                 newEmbedBuilder.WithUrl(commitlink);
                                 newEmbedBuilder.WithColor(Discord.Color.Blue);
                                 newEmbedBuilder.WithFooter($"ID: {commit.id} | Change: {commit.changeset} | {DateTime.Now.ToString()}");
-
                                 foreach (var guildId in commitFollowerChannel_IDS.Keys)
                                 {
                                     var guild = _client.GetGuild(guildId);
@@ -858,16 +975,47 @@ namespace RT_Control
                                                 if (!CheckBotPerms(guild))
                                                 {
                                                     LogMessage($"No Perms. | Guild: {guild}");
+                                                    try
+                                                    {
+                                                        ulong u = guild.OwnerId;
+                                                        string msg = $"No Perms. | Guild: {guild} \nBot gerekli izinlere sahip değil.";
+                                                        var user = _client.GetUserAsync(u).Result;
+                                                        await UserExtensions.SendMessageAsync(user, msg);
+                                                    }
+                                                    catch (Exception ex)
+                                                    {
+                                                        LogMessage($"Error Send DM: {ex}");
+                                                        await webhookLogs.SendMessageAsync($"Error Send DM: {ex}");
+                                                    }
                                                     await webhookLogs.SendMessageAsync($"No Perms. | Guild: {guild}");
-                                                    return;
                                                 }
-                                                await channel.SendMessageAsync("", false, newEmbedBuilder.Build());
-                                                await Task.Delay(MessageDelay);
+                                                if (!CheckChannelPerms(channel))
+                                                {
+                                                    LogMessage($"No Write Perms. | Guild: {guild}");
+                                                    try
+                                                    {
+                                                        ulong u = guild.OwnerId;
+                                                        string msg = $"No Write Perms. | Guild: {guild} \nBot açtığı kanalda yazmak için gerekli izinlere sahip değil.";
+                                                        var user = _client.GetUserAsync(u).Result;
+                                                        await UserExtensions.SendMessageAsync(user, msg);
+                                                    }
+                                                    catch (Exception ex)
+                                                    {
+                                                        LogMessage($"Error Send DM: {ex}");
+                                                        await webhookLogs.SendMessageAsync($"Error Send DM: {ex}");
+                                                    }
+                                                    await webhookLogs.SendMessageAsync($"No Perms. | Guild: {guild}");
+                                                }
+                                                else
+                                                {
+                                                    await channel.SendMessageAsync("", false, newEmbedBuilder.Build());
+                                                    await Task.Delay(MessageDelay);
+                                                }
                                             }
                                             catch (Exception ex)
                                             {
-                                                LogMessage($"Error: {ex}");
-                                                await webhookLogs.SendMessageAsync($"Error: {ex}");
+                                                LogMessage($"Error - COMMIT: {ex}");
+                                                await webhookLogs.SendMessageAsync($"Error - COMMIT: {ex}");
                                             }
                                         }
                                     }
@@ -877,17 +1025,12 @@ namespace RT_Control
                         storedCommits.UnionWith(newCommits);
                     }
                 }
-                else
-                {
-                    LogMessage("[CommitTracker] Yeni veri alınamadı.");
-                }
-
-                LogMessage($"[CommitTracker] Depolanan: {storedCommits.Count}");
             }
-            catch (Exception ex)
+            else
             {
-                LogMessage($"[CommitTracker] Hata oluştu: {ex.Message}");
+                LogMessage("[CommitTracker] Yeni veri alınamadı.");
             }
+            LogMessage($"[CommitTracker] Depolanan: {storedCommits.Count}");
         }
 
         private static Task ResponderUpdate()
@@ -949,27 +1092,57 @@ namespace RT_Control
                             if (!CheckBotPerms(guild))
                             {
                                 LogMessage($"No Perms. | Guild: {guild}");
+                                try
+                                {
+                                    ulong u = guild.OwnerId;
+                                    string msg = $"No  Perms. | Guild: {guild} \nBot gerekli izinlere sahip değil.";
+                                    var user = _client.GetUserAsync(u).Result;
+                                    await UserExtensions.SendMessageAsync(user, msg);
+                                }
+                                catch (Exception ex)
+                                {
+                                    LogMessage($"Error Send DM: {ex}");
+                                    await webhookLogs.SendMessageAsync($"Error Send DM: {ex}");
+                                }
                                 await webhookLogs.SendMessageAsync($"No Perms. | Guild: {guild}");
-                                return;
                             }
-                            var messages = await channel.GetMessagesAsync(limit: 1).FlattenAsync();
-                            var lastMessage = messages.FirstOrDefault() as IUserMessage;
-                            if (lastMessage != null && lastMessage.Author.Id == _client.CurrentUser.Id)
+                            if (!CheckChannelPerms(channel))
                             {
-                                await lastMessage.ModifyAsync(msg => msg.Embed = embedBuilder.Build());
+                                LogMessage($"No Write Perms. | Guild: {guild}");
+                                try
+                                {
+                                    ulong u = guild.OwnerId;
+                                    string msg = $"No Write Perms. | Guild: {guild} \nBot açtığı kanalda yazmak için gerekli izinlere sahip değil.";
+                                    var user = _client.GetUserAsync(u).Result;
+                                    await UserExtensions.SendMessageAsync(user, msg);
+                                }
+                                catch (Exception ex)
+                                {
+                                    LogMessage($"Error - Send DM: {ex}");
+                                    await webhookLogs.SendMessageAsync($"Error - Send DM: {ex}");
+                                }
+                                await webhookLogs.SendMessageAsync($"No Perms. | Guild: {guild}");
                             }
                             else
                             {
-                                await channel.SendMessageAsync("", false, embedBuilder.Build());
+                                var messages = await channel.GetMessagesAsync(limit: 1).FlattenAsync();
+                                var lastMessage = messages.FirstOrDefault() as IUserMessage;
+                                if (lastMessage != null && lastMessage.Author.Id == _client.CurrentUser.Id)
+                                {
+                                    await lastMessage.ModifyAsync(msg => msg.Embed = embedBuilder.Build());
+                                }
+                                else
+                                {
+                                    await channel.SendMessageAsync("", false, embedBuilder.Build());
+                                }
+                                await Task.Delay(MessageDelay);
                             }
-                            await Task.Delay(MessageDelay);
                         }
                         catch (Exception ex)
                         {
-                            LogMessage($"Error: {ex}");
-                            await webhookLogs.SendMessageAsync($"Error: {ex}");
+                            LogMessage($"Error - SENDUPDATE: {ex}");
+                            await webhookLogs.SendMessageAsync($"Error - SENDUPDATE: {ex}");
                         }
-
                     }
                 }
             }
@@ -977,10 +1150,7 @@ namespace RT_Control
 
         private Task BotReady()
         {
-            _client.SetCustomStatusAsync("Rust Güncelleme Notları");
-
             _botReady = true;
-
             return Task.CompletedTask;
         }
 
