@@ -68,23 +68,18 @@ namespace RT_Control
 
             await _client.SetCustomStatusAsync($"Rust Güncelleme Notları");
 
-            LogMessage("Initialize update checker...");
-            await Task.Run(Initialize_UpdateChecker);
-
-            LogMessage("Initialize channels...");
-            await Task.Run(Initialize_Channels);
-
             LogMessage("Starting tasks...");
-            _ = Task.Run(ResponderandChannels);
-            _ = Task.Run(CommitandSkin);
-            _ = Task.Run(UpdateChecker);
+            _ = Task.Run(Responder_Runner);
+            _ = Task.Run(Commit_Runner);
+            _ = Task.Run(Skin_Runner);
+            _ = Task.Run(Update_Runner);
 
             LogMessage("All done!");
 
             await Task.Delay(-1);
         }
 
-        private static async Task ResponderandChannels()
+        private static async Task Responder_Runner()
         {
             while (true)
             {
@@ -97,72 +92,77 @@ namespace RT_Control
                 }
                 catch (Exception ex)
                 {
-                    LogMessage($"Error - ResponderandChannels: {ex}");
-                    await webhookLogs.SendMessageAsync($"Error - ResponderandChannels: {ex}");
+                    LogMessage($"Error - Responder_Runner: {ex}");
+                    await webhookLogs.SendMessageAsync($"Error - Responder_Runner: {ex}");
                 }
                 await Task.Delay(TimeSpan.FromHours(1));
             }
         }
 
-        private static async Task CommitandSkin()
+        private static async Task Commit_Runner()
         {
             while (true)
             {
                 try
                 {
                     await CheckForNewCommits();
-                    await CheckForNewSkins();
                 }
                 catch (Exception ex)
                 {
-                    LogMessage($"Error - CommitandSkin: {ex}");
-                    await webhookLogs.SendMessageAsync($"Error - CommitandSkin: {ex}");
+                    LogMessage($"Error - Commit_Runner: {ex}");
+                    await webhookLogs.SendMessageAsync($"Error - Commit_Runner: {ex}");
                 }
                 await Task.Delay(TimeSpan.FromMinutes(1));
             }
         }
 
-        private static async Task UpdateChecker()
+        private static async Task Skin_Runner()
         {
             while (true)
             {
-                string mevcutOyun = await GetRustVersionAsync("rustapp.txt");
-                LogMessage($"[UpdateChecker] Oyun Mevcut Sürüm: {mevcutOyun}");
+                try
+                {
+                    await CheckForNewSkins();
+                }
+                catch (Exception ex)
+                {
+                    LogMessage($"Error - Skin_Runner: {ex}");
+                    await webhookLogs.SendMessageAsync($"Error - Skin_Runner: {ex}");
+                }
+                await Task.Delay(TimeSpan.FromMinutes(1));
+            }
+        }
 
-                string mevcutSunucu = await GetRustVersionAsync("rustserver.txt");
-                LogMessage($"[UpdateChecker] Sunucu Mevcut Sürüm: {mevcutSunucu}");
+        private static async Task Update_Runner()
+        {
+            await Initialize_UpdateChecker();
+            while (true)
+            {
+                try
+                {
+                    string mevcutOyun = await GetRustVersionAsync("rustapp.txt");
+                    string mevcutSunucu = await GetRustVersionAsync("rustserver.txt");
 
-                await CheckAndUpdateVersion(
-                    EnSonOyun,
-                    mevcutOyun,
-                    ":radioactive: **Oyuncular için yeni bir Güncelleme geldi!** :radioactive:",
-                    "Güncellemeyi görmüyorsanız, Steaminizi yeniden başlatın.",
-                    false);
+                    LogMessage($"[UpdateChecker] Oyun Mevcut Sürüm: {mevcutOyun}");
+                    LogMessage($"[UpdateChecker] Sunucu Mevcut Sürüm: {mevcutSunucu}");
 
-                await CheckAndUpdateVersion(
-                   EnSonSunucu,
-                   mevcutSunucu,
-                   ":radioactive: **Sunucular için yeni bir Güncelleme geldi!** :radioactive:",
-                   "Sunucu sahipleri, sunucularını güncelleyebilir.",
-                   true);
-
+                    await CheckAndUpdateVersion(EnSonOyun, mevcutOyun, ":radioactive: **Oyuncular için yeni bir Güncelleme geldi!** :radioactive:", "Güncellemeyi görmüyorsanız, Steaminizi yeniden başlatın.", false);
+                    await CheckAndUpdateVersion(EnSonSunucu, mevcutSunucu, ":radioactive: **Sunucular için yeni bir Güncelleme geldi!** :radioactive:", "Sunucu sahipleri, sunucularını güncelleyebilir.", true);
+                }
+                catch (Exception ex)
+                {
+                    LogMessage($"Error - Update_Runner: {ex}");
+                    await webhookLogs.SendMessageAsync($"Error - Update_Runner: {ex}");
+                }
                 await Task.Delay(TimeSpan.FromSeconds(1));
             }
         }
 
         private static async Task AppLogs()
         {
-            try
-            {
-                var botUser = _client.CurrentUser;
-                await webhookLogs.SendMessageAsync($"Server Count: {botUser.MutualGuilds.Count}");
-                foreach (var guild in botUser.MutualGuilds) await webhookLogs.SendMessageAsync($"Guild Name: {guild.Name} - Guild ID: {guild.Id}");
-            }
-            catch (Exception ex)
-            {
-                LogMessage($"Error - AppLogs: {ex}");
-                await webhookLogs.SendMessageAsync($"Error - AppLogs: {ex}");
-            }
+            var botUser = _client.CurrentUser;
+            await webhookLogs.SendMessageAsync($"Server Count: {botUser.MutualGuilds.Count}");
+            foreach (var guild in botUser.MutualGuilds) await webhookLogs.SendMessageAsync($"Guild Name: {guild.Name} - Guild ID: {guild.Id}");
         }
 
         private static async Task Initialize_Channels()
@@ -171,85 +171,78 @@ namespace RT_Control
             {
                 string categoryName = "rust-güncelleme┃🔔";
                 string[] channelNames = { "güncelleme-tarihi┃📅", "güncelleme-takipçisi┃💻", "haftalık-mağaza┃🛒", "commits┃📝" };
-                try
+
+                if (!CheckBotPerms(CurrentGuild)) await NoPermsSendMessage(CurrentGuild);
+
+                var categoryCheck = CurrentGuild.CategoryChannels.FirstOrDefault(c => c.Name == categoryName);
+                ICategoryChannel categoryCurrent;
+
+                if (categoryCheck != null) { LogMessage($"Category already created. | Guild: {CurrentGuild} | Category: {categoryCheck.Id}"); categoryCurrent = categoryCheck; }
+                else { categoryCurrent = await CurrentGuild.CreateCategoryChannelAsync(categoryName); LogMessage($"Category created. | Guild: {CurrentGuild} - Category: {categoryCurrent.Id}"); }
+
+                List<ulong> updateDateChannel_Local_IDS = new List<ulong>();
+                List<ulong> updateTrackerChannel_Local_IDS = new List<ulong>();
+                List<ulong> storeCheckerChannel_Local_IDS = new List<ulong>();
+                List<ulong> commitFollowerChannel_Local_IDS = new List<ulong>();
+
+                for (int i = 0; i < channelNames.Length; i++)
                 {
-                    if (!CheckBotPerms(CurrentGuild)) await NoPermsSendMessage(CurrentGuild);
-
-                    var categoryCheck = CurrentGuild.CategoryChannels.FirstOrDefault(c => c.Name == categoryName);
-                    ICategoryChannel categoryCurrent;
-
-                    if (categoryCheck != null) { LogMessage($"Category already created. | Guild: {CurrentGuild} | Category: {categoryCheck.Id}"); categoryCurrent = categoryCheck; }
-                    else { categoryCurrent = await CurrentGuild.CreateCategoryChannelAsync(categoryName); LogMessage($"Category created. | Guild: {CurrentGuild} - Category: {categoryCurrent.Id}"); }
-
-                    List<ulong> updateDateChannel_Local_IDS = new List<ulong>();
-                    List<ulong> updateTrackerChannel_Local_IDS = new List<ulong>();
-                    List<ulong> storeCheckerChannel_Local_IDS = new List<ulong>();
-                    List<ulong> commitFollowerChannel_Local_IDS = new List<ulong>();
-
-                    for (int i = 0; i < channelNames.Length; i++)
+                    string channelName = channelNames[i];
+                    var channelCheck = CurrentGuild.TextChannels.FirstOrDefault(c => c.Name == channelName && c.CategoryId == categoryCurrent.Id);
+                    if (channelCheck != null)
                     {
-                        string channelName = channelNames[i];
-                        var channelCheck = CurrentGuild.TextChannels.FirstOrDefault(c => c.Name == channelName && c.CategoryId == categoryCurrent.Id);
-                        if (channelCheck != null)
+                        LogMessage($"Channel already created: {channelCheck.Id}");
+                        switch (i)
                         {
-                            LogMessage($"Channel already created: {channelCheck.Id}");
-                            switch (i)
-                            {
-                                case 0:
-                                    updateDateChannel_Local_IDS.Add(channelCheck.Id);
-                                    break;
+                            case 0:
+                                updateDateChannel_Local_IDS.Add(channelCheck.Id);
+                                break;
 
-                                case 1:
-                                    updateTrackerChannel_Local_IDS.Add(channelCheck.Id);
-                                    break;
+                            case 1:
+                                updateTrackerChannel_Local_IDS.Add(channelCheck.Id);
+                                break;
 
-                                case 2:
-                                    storeCheckerChannel_Local_IDS.Add(channelCheck.Id);
-                                    break;
+                            case 2:
+                                storeCheckerChannel_Local_IDS.Add(channelCheck.Id);
+                                break;
 
-                                case 3:
-                                    commitFollowerChannel_Local_IDS.Add(channelCheck.Id);
-                                    break;
-                            }
-                        }
-                        else
-                        {
-                            var newChannel = await CurrentGuild.CreateTextChannelAsync(channelName, x => x.CategoryId = categoryCurrent.Id);
-                            LogMessage($"New Channel created: {newChannel.Id}");
-                            switch (i)
-                            {
-                                case 0:
-                                    updateDateChannel_Local_IDS.Add(newChannel.Id);
-                                    await newChannel.SendMessageAsync("**Güncelleme Tarihi** kanalı başarıyla oluşturuldu.\n\nGüncelleme bilgisi saatlik olarak güncellenmektir. 1 Saat içinde güncelleme bilgisi bu kanala eklenecektir.");
-                                    break;
-
-                                case 1:
-                                    updateTrackerChannel_Local_IDS.Add(newChannel.Id);
-                                    await newChannel.SendMessageAsync("**Güncelleme Takipçisi** kanalı başarıyla oluşturuldu.\n\nSunucu veya Oyuncu taraflı bir güncelleme tespit edildiğinde bu kanalda bildirim gelecektir.");
-                                    break;
-
-                                case 2:
-                                    storeCheckerChannel_Local_IDS.Add(newChannel.Id);
-                                    await newChannel.SendMessageAsync("**Haftalık Mağaza** kanalı başarıyla oluşturuldu.\n\nHer hafta mağaza yenilediğinde gelen skinlerin görsellerini ve fiyatlarını bu kanalda görebilirsiniz.");
-                                    break;
-
-                                case 3:
-                                    commitFollowerChannel_Local_IDS.Add(newChannel.Id);
-                                    await newChannel.SendMessageAsync("**Commits** kanalı başarıyla oluşturuldu.\n\nYeni bir commit tespit edildiğinde bu kanalda görebilirsiniz.");
-                                    break;
-                            }
+                            case 3:
+                                commitFollowerChannel_Local_IDS.Add(channelCheck.Id);
+                                break;
                         }
                     }
-                    updateDateChannel_IDS[CurrentGuild.Id] = updateDateChannel_Local_IDS;
-                    updateTrackerChannel_IDS[CurrentGuild.Id] = updateTrackerChannel_Local_IDS;
-                    storeCheckerChannel_IDS[CurrentGuild.Id] = storeCheckerChannel_Local_IDS;
-                    commitFollowerChannel_IDS[CurrentGuild.Id] = commitFollowerChannel_Local_IDS;
+                    else
+                    {
+                        var newChannel = await CurrentGuild.CreateTextChannelAsync(channelName, x => x.CategoryId = categoryCurrent.Id);
+                        LogMessage($"New Channel created: {newChannel.Id}");
+                        switch (i)
+                        {
+                            case 0:
+                                updateDateChannel_Local_IDS.Add(newChannel.Id);
+                                await newChannel.SendMessageAsync("**Güncelleme Tarihi** kanalı başarıyla oluşturuldu.\nGüncelleme bilgisi saatlik olarak güncellenmektir. 1 Saat içinde güncelleme bilgisi bu kanala eklenecektir.");
+                                break;
+
+                            case 1:
+                                updateTrackerChannel_Local_IDS.Add(newChannel.Id);
+                                await newChannel.SendMessageAsync("**Güncelleme Takipçisi** kanalı başarıyla oluşturuldu.\nSunucu veya Oyuncu taraflı bir güncelleme tespit edildiğinde bu kanalda bildirim gelecektir.");
+                                break;
+
+                            case 2:
+                                storeCheckerChannel_Local_IDS.Add(newChannel.Id);
+                                await newChannel.SendMessageAsync("**Haftalık Mağaza** kanalı başarıyla oluşturuldu.\nHer hafta mağaza yenilediğinde gelen skinlerin görsellerini ve fiyatlarını bu kanalda görebilirsiniz.");
+                                break;
+
+                            case 3:
+                                commitFollowerChannel_Local_IDS.Add(newChannel.Id);
+                                await newChannel.SendMessageAsync("**Commits** kanalı başarıyla oluşturuldu.\nYeni bir commit tespit edildiğinde bu kanalda görebilirsiniz.");
+                                break;
+                        }
+                    }
                 }
-                catch (Exception ex)
-                {
-                    LogMessage($"Error - Initialize_Channels: {ex}");
-                    await webhookLogs.SendMessageAsync($"Error - Initialize_Channels: {ex}");
-                }
+                updateDateChannel_IDS[CurrentGuild.Id] = updateDateChannel_Local_IDS;
+                updateTrackerChannel_IDS[CurrentGuild.Id] = updateTrackerChannel_Local_IDS;
+                storeCheckerChannel_IDS[CurrentGuild.Id] = storeCheckerChannel_Local_IDS;
+                commitFollowerChannel_IDS[CurrentGuild.Id] = commitFollowerChannel_Local_IDS;
             }
         }
 
@@ -337,60 +330,84 @@ namespace RT_Control
 
         private static async Task CheckForNewSkins()
         {
-            try
+            var cancellationTokenSource = new CancellationTokenSource();
+            cancellationTokenSource.CancelAfter(TimeSpan.FromMinutes(1));
+
+            var response_main = await httpClient.GetAsync(skinApiUrl, cancellationTokenSource.Token);
+            if (!response_main.IsSuccessStatusCode) { LogMessage("[SkinTracker] response contect null."); return; }
+
+            var response = await response_main.Content.ReadAsStringAsync();
+            if (response == "") { LogMessage("[SkinTracker] response null."); return; }
+
+            List<SkinItem> skinData = ParseSkins(response);
+            if (skinData.Count == 0) { LogMessage("[SkinTracker] skinData null."); return; }
+
+            var newSkins = skinData.Select(Skin => Skin.Name).ToList();
+
+            foreach (var item in skinData) LogMessage($"[SkinTracker] Name: {item.Name} | Price: {item.Price} | Type: {item.Item} | Image: {item.Image}");
+
+            if (storedSkins.Count == 0)
             {
-                var cancellationTokenSource = new CancellationTokenSource();
-                cancellationTokenSource.CancelAfter(TimeSpan.FromMinutes(1));
-
-                var response_main = await httpClient.GetAsync(skinApiUrl, cancellationTokenSource.Token);
-                if (!response_main.IsSuccessStatusCode) { LogMessage("[SkinTracker] response contect null."); return; }
-
-                var response = await response_main.Content.ReadAsStringAsync();
-                if (response == "") { LogMessage("[SkinTracker] response null."); return; }
-
-                List<SkinItem> skinData = ParseSkins(response);
-                if (skinData.Count == 0) { LogMessage("[SkinTracker] skinData null."); return; }
-
-                var newSkins = skinData.Select(Skin => Skin.Name).ToList();
-
-                foreach (var item in skinData) LogMessage($"[SkinTracker] Name: {item.Name} | Price: {item.Price} | Type: {item.Item} | Image: {item.Image}");
-
-                if (storedSkins.Count == 0)
+                storedSkins.Clear();
+                storedSkins.UnionWith(newSkins);
+            }
+            else
+            {
+                var differences = skinData.Where(Skin => newSkins.Contains(Skin.Name) && !storedSkins.Contains(Skin.Name)).ToList();
+                if (differences.Any())
                 {
-                    storedSkins.Clear();
-                    storedSkins.UnionWith(newSkins);
-                }
-                else
-                {
-                    var differences = skinData.Where(Skin => newSkins.Contains(Skin.Name) && !storedSkins.Contains(Skin.Name)).ToList();
-                    if (differences.Any())
+                    if (!skinControlTimer)
                     {
-                        if (!skinControlTimer)
+                        await Task.Delay(TimeSpan.FromMinutes(10));
+                        skinControlTimer = true;
+                        return;
+                    }
+                    skinControlTimer = false;
+
+                    var ourimage = CreateBigImage(skinData);
+                    ourimage.Save("skinimage.png", System.Drawing.Imaging.ImageFormat.Png);
+                    if (ourimage == null) return;
+
+                    var skincount = skinData.Count;
+                    float totalcost = 0;
+                    foreach (var skin in skinData)
+                    {
+                        float price = float.Parse(skin.Price.Replace("$", ""), CultureInfo.InvariantCulture);
+                        totalcost += price;
+                    }
+                    LogMessage($"[SkinTracker] Mağaza Yenilendi --> {skincount} yeni kostüm. Toplam Kostüm Değeri: {totalcost}$");
+
+                    EmbedBuilder embedBuildformain = new EmbedBuilder();
+                    embedBuildformain.WithTitle(":bell: MAĞAZA YENİLENDİ! | " + DateTime.Now.ToShortDateString() + " :bell:");
+                    embedBuildformain.WithColor(Discord.Color.Blue);
+                    embedBuildformain.WithDescription($"**{skincount}** yeni kostüm mağazaye eklendi.\n\n Toplam Kostüm Değeri: **{totalcost}$**");
+                    embedBuildformain.WithUrl("https://store.steampowered.com/itemstore/252490/");
+
+                    foreach (var guildId in storeCheckerChannel_IDS.Keys)
+                    {
+                        var guild = _client.GetGuild(guildId);
+                        if (guild == null) continue;
+
+                        foreach (var channelId in storeCheckerChannel_IDS[guildId])
                         {
-                            await Task.Delay(TimeSpan.FromMinutes(10));
-                            skinControlTimer = true;
-                            return;
+                            var channel = guild.GetTextChannel(channelId);
+                            if (channel != null)
+                            {
+                                if (!CheckBotPerms(guild)) await NoPermsSendMessage(guild);
+                                if (!CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
+                                else await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
+                            }
                         }
-                        skinControlTimer = false;
+                    }
 
-                        var ourimage = CreateBigImage(skinData);
-                        ourimage.Save("skinimage.png", System.Drawing.Imaging.ImageFormat.Png);
-                        if (ourimage == null) return;
-
-                        var skincount = skinData.Count;
-                        float totalcost = 0;
-                        foreach (var skin in skinData)
+                    using (var fileStream = new FileStream("skinimage.png", FileMode.Open))
+                    {
+                        byte[] imageData;
+                        using (var memoryStream = new MemoryStream())
                         {
-                            float price = float.Parse(skin.Price.Replace("$", ""), CultureInfo.InvariantCulture);
-                            totalcost += price;
+                            fileStream.CopyTo(memoryStream);
+                            imageData = memoryStream.ToArray();
                         }
-                        LogMessage($"[SkinTracker] Mağaza Yenilendi --> {skincount} yeni kostüm. Toplam Kostüm Değeri: {totalcost}$");
-
-                        EmbedBuilder embedBuildformain = new EmbedBuilder();
-                        embedBuildformain.WithTitle(":bell: MAĞAZA YENİLENDİ! | " + DateTime.Now.ToShortDateString() + " :bell:");
-                        embedBuildformain.WithColor(Discord.Color.Blue);
-                        embedBuildformain.WithDescription($"**{skincount}** yeni kostüm mağazaye eklendi.\n\n Toplam Kostüm Değeri: **{totalcost}$**");
-                        embedBuildformain.WithUrl("https://store.steampowered.com/itemstore/252490/");
 
                         foreach (var guildId in storeCheckerChannel_IDS.Keys)
                         {
@@ -402,78 +419,20 @@ namespace RT_Control
                                 var channel = guild.GetTextChannel(channelId);
                                 if (channel != null)
                                 {
-                                    try
+                                    using (var memoryStream = new MemoryStream(imageData))
                                     {
                                         if (!CheckBotPerms(guild)) await NoPermsSendMessage(guild);
                                         if (!CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
-                                        else await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        LogMessage($"Error - CheckForNewSkins: {ex}");
-                                        await webhookLogs.SendMessageAsync($"Error - CheckForNewSkins: {ex}");
+                                        else await channel.SendFileAsync(memoryStream, "skinimage.png");
                                     }
                                 }
                             }
                         }
-
-                        using (var fileStream = new FileStream("skinimage.png", FileMode.Open))
-                        {
-                            byte[] imageData;
-                            using (var memoryStream = new MemoryStream())
-                            {
-                                fileStream.CopyTo(memoryStream);
-                                imageData = memoryStream.ToArray();
-                            }
-
-                            foreach (var guildId in storeCheckerChannel_IDS.Keys)
-                            {
-                                var guild = _client.GetGuild(guildId);
-                                if (guild == null) continue;
-
-                                foreach (var channelId in storeCheckerChannel_IDS[guildId])
-                                {
-                                    var channel = guild.GetTextChannel(channelId);
-                                    if (channel != null)
-                                    {
-                                        using (var memoryStream = new MemoryStream(imageData))
-                                        {
-                                            try
-                                            {
-                                                if (!CheckBotPerms(guild)) await NoPermsSendMessage(guild);
-                                                if (!CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
-                                                else await channel.SendFileAsync(memoryStream, "skinimage.png");
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                LogMessage($"Error - CheckForNewSkins: {ex}");
-                                                await webhookLogs.SendMessageAsync($"Error - CheckForNewSkins: {ex}");
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        File.Delete("skinimage.png");
-                        storedSkins.Clear();
-                        storedSkins.UnionWith(newSkins);
                     }
+                    File.Delete("skinimage.png");
+                    storedSkins.Clear();
+                    storedSkins.UnionWith(newSkins);
                 }
-            }
-            catch (OperationCanceledException ex)
-            {
-                LogMessage("[SkinTracker] İstek zaman aşımına uğradı.");
-                await webhookLogs.SendMessageAsync($"Error - CheckForNewSkins_TimeOut: {ex}");
-            }
-            catch (HttpRequestException ex)
-            {
-                LogMessage("[SkinTracker] HTTP request failed: " + ex.Message);
-                await webhookLogs.SendMessageAsync($"Error - CheckForNewSkins_RequestFailed: {ex}");
-            }
-            catch (Exception ex)
-            {
-                LogMessage("[SkinTracker] An error occurred: " + ex.Message);
-                await webhookLogs.SendMessageAsync($"Error - CheckForNewSkins_Generally: {ex}");
             }
         }
 
@@ -487,18 +446,10 @@ namespace RT_Control
             int squareSize = imageSize * 400;
             Bitmap combinedImage = new Bitmap(squareSize, squareSize);
             Bitmap backgroundImage;
-            try
+            using (WebClient client = new WebClient())
             {
-                using (WebClient client = new WebClient())
-                {
-                    byte[] imageData = client.DownloadData("https://cdn.discordapp.com/attachments/1243011831891623936/1243016965715525733/back.png?ex=664ff142&is=664e9fc2&hm=a723c7433f7a340fcc3f4e3794fb2540229d562cf4b5eb3cf076f8c6b16e242a&");
-                    using (MemoryStream stream = new MemoryStream(imageData)) backgroundImage = new Bitmap(stream);
-                }
-            }
-            catch (Exception ex)
-            {
-                LogMessage("[SkinTracker] An error occurred: " + ex.Message);
-                return null;
+                byte[] imageData = client.DownloadData("https://cdn.discordapp.com/attachments/1243011831891623936/1243016965715525733/back.png?ex=664ff142&is=664e9fc2&hm=a723c7433f7a340fcc3f4e3794fb2540229d562cf4b5eb3cf076f8c6b16e242a&");
+                using (MemoryStream stream = new MemoryStream(imageData)) backgroundImage = new Bitmap(stream);
             }
 
             using (Graphics g = Graphics.FromImage(combinedImage))
@@ -510,49 +461,41 @@ namespace RT_Control
 
                 foreach (var url in imageUrls)
                 {
-                    try
+                    using (WebClient client = new WebClient())
                     {
-                        using (WebClient client = new WebClient())
+                        byte[] imageData = client.DownloadData(url);
+                        using (MemoryStream stream = new MemoryStream(imageData))
                         {
-                            byte[] imageData = client.DownloadData(url);
-                            using (MemoryStream stream = new MemoryStream(imageData))
+                            System.Drawing.Image img = System.Drawing.Image.FromStream(stream);
+
+                            g.DrawImage(img, x * 400, y * 400, 350, 350);
+
+                            var skinname = skinNames[index];
+                            var skintype = skinType[index];
+                            var skinprice = skinPrices[index];
+
+                            if (index < imageUrls.Count)
                             {
-                                System.Drawing.Image img = System.Drawing.Image.FromStream(stream);
-
-                                g.DrawImage(img, x * 400, y * 400, 350, 350);
-
-                                var skinname = skinNames[index];
-                                var skintype = skinType[index];
-                                var skinprice = skinPrices[index];
-
-                                if (index < imageUrls.Count)
+                                Font font = new Font("Arial", 18, FontStyle.Bold);
+                                Font font2 = new Font("Arial", 12);
+                                SizeF textSize = g.MeasureString(skinname, font);
+                                if (textSize.Width > 400 || textSize.Height > 400)
                                 {
-                                    Font font = new Font("Arial", 18, FontStyle.Bold);
-                                    Font font2 = new Font("Arial", 12);
-                                    SizeF textSize = g.MeasureString(skinname, font);
-                                    if (textSize.Width > 400 || textSize.Height > 400)
-                                    {
-                                        float scale = Math.Min(400 / textSize.Width, 400 / textSize.Height);
-                                        font = new Font("Arial", 18 * scale, FontStyle.Bold);
-                                    }
-                                    float textX = x * 400 + (400 - textSize.Width) / 2;
-                                    float textY = (y + 1) * 400 - textSize.Height;
-                                    g.DrawString(skinname, font, Brushes.White, new PointF(textX, textY - 30));
-                                    g.DrawString(skinprice, font, Brushes.ForestGreen, new PointF(textX, textY));
-                                    g.DrawString(skintype, font2, Brushes.DarkGray, new PointF(textX + 75, textY + 5));
+                                    float scale = Math.Min(400 / textSize.Width, 400 / textSize.Height);
+                                    font = new Font("Arial", 18 * scale, FontStyle.Bold);
                                 }
+                                float textX = x * 400 + (400 - textSize.Width) / 2;
+                                float textY = (y + 1) * 400 - textSize.Height;
+                                g.DrawString(skinname, font, Brushes.White, new PointF(textX, textY - 30));
+                                g.DrawString(skinprice, font, Brushes.ForestGreen, new PointF(textX, textY));
+                                g.DrawString(skintype, font2, Brushes.DarkGray, new PointF(textX + 75, textY + 5));
+                            }
 
-                                using (Pen pen = new Pen(System.Drawing.Color.Black, 2))
-                                {
-                                    g.DrawRectangle(pen, x * 400, y * 400, 400, 400);
-                                }
+                            using (Pen pen = new Pen(System.Drawing.Color.Black, 2))
+                            {
+                                g.DrawRectangle(pen, x * 400, y * 400, 400, 400);
                             }
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        LogMessage("[SkinTracker] Creating image fail: " + ex.Message);
-                        return null;
                     }
 
                     index++; x++;
@@ -618,38 +561,29 @@ namespace RT_Control
             string outputFileName = $"out/{Path.GetFileNameWithoutExtension(scriptFileName)}out.txt";
             string scriptpath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "scripts", scriptFileName);
 
-            try
+            File.Delete(outputFileName);
+
+            ProcessStartInfo startInfo = new ProcessStartInfo
             {
-                File.Delete(outputFileName);
+                FileName = "cmd.exe",
+                Arguments = $"/c C:\\steamcmd\\steamcmd.exe +runscript {scriptpath} > {outputFileName}",
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
 
-                ProcessStartInfo startInfo = new ProcessStartInfo
+            using (Process process = new Process { StartInfo = startInfo })
+            {
+                process.Start();
+                process.WaitForExit();
+
+                using (StreamReader fileReader = new StreamReader(outputFileName))
                 {
-                    FileName = "cmd.exe",
-                    Arguments = $"/c C:\\steamcmd\\steamcmd.exe +runscript {scriptpath} > {outputFileName}",
-                    RedirectStandardOutput = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
+                    string fileContent = await fileReader.ReadToEndAsync();
 
-                using (Process process = new Process { StartInfo = startInfo })
-                {
-                    process.Start();
-                    process.WaitForExit();
-
-                    using (StreamReader fileReader = new StreamReader(outputFileName))
-                    {
-                        string fileContent = await fileReader.ReadToEndAsync();
-
-                        int buildIdIndex = fileContent.IndexOf("\"buildid\"") + 12;
-                        return fileContent.Substring(buildIdIndex, 8);
-                    }
+                    int buildIdIndex = fileContent.IndexOf("\"buildid\"") + 12;
+                    return fileContent.Substring(buildIdIndex, 8);
                 }
-            }
-            catch (Exception ex)
-            {
-                LogMessage($"Error - GetRustVersionAsync: {ex.Message}");
-                await webhookLogs.SendMessageAsync($"Error - GetRustVersionAsync: {ex}");
-                return null;
             }
         }
 
@@ -681,91 +615,71 @@ namespace RT_Control
                         var channel = guild.GetTextChannel(channelId);
                         if (channel != null)
                         {
-                            try
-                            {
-                                if (!CheckBotPerms(guild)) await NoPermsSendMessage(guild);
-                                if (!CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
-                                else await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
-                            }
-                            catch (Exception ex)
-                            {
-                                LogMessage($"Error - CheckAndUpdateVersion: {ex}");
-                                await webhookLogs.SendMessageAsync($"Error - CheckAndUpdateVersion: {ex}");
-                            }
+                            if (!CheckBotPerms(guild)) await NoPermsSendMessage(guild);
+                            if (!CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
+                            else await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
                         }
                     }
                 }
             }
         }
 
-
-
         private static async Task CheckForNewCommits()
         {
-            try
+            var response = await httpClient.GetStringAsync(commitApiUrl);
+            var commitData = JsonConvert.DeserializeObject<CommitData>(response);
+            if (commitData?.Results != null)
             {
-                var response = await httpClient.GetStringAsync(commitApiUrl);
-                var commitData = JsonConvert.DeserializeObject<CommitData>(response);
-                if (commitData?.Results == null) { LogMessage("[CommitTracker] Yeni veri alınamadı."); return; }
-
-                var newCommits = commitData.Results.Select(commit => commit.Message).ToList();
-                if (!newCommits.Any()) { LogMessage("[CommitTracker] Yeni commit alınamadı."); return; }
-
-                if (storedCommits.Count == 0)
+                var newCommits = commitData.Results.Select(commit => commit.message).ToList();
+                if (newCommits != null && newCommits.Any() && newCommits.Count > 0)
                 {
-                    storedCommits.UnionWith(newCommits);
-                }
-                else
-                {
-                    var differences = commitData.Results.Where(commit => newCommits.Contains(commit.Message) && !storedCommits.Contains(commit.Message)).ToList();
-                    if (differences.Any())
+                    if (storedCommits.Count == 0)
                     {
-                        foreach (var commit in differences)
+                        storedCommits.UnionWith(newCommits);
+                    }
+                    else
+                    {
+                        var differences = commitData.Results.Where(commit => newCommits.Contains(commit.message) && !storedCommits.Contains(commit.message)).ToList();
+                        if (differences.Any())
                         {
-                            LogMessage($"[CommitTracker] Yeni Commit: {commit.Id}");
-                            var commitlink = "https://commits.facepunch.com/" + commit.Id;
-                            EmbedBuilder newEmbedBuilder = new EmbedBuilder();
-                            newEmbedBuilder.WithAuthor(commit.UserInfo.Name, commit.UserInfo.Avatar);
-                            newEmbedBuilder.WithTitle(commit.Branch);
-                            newEmbedBuilder.WithDescription(commit.Message);
-                            newEmbedBuilder.WithUrl(commitlink);
-                            newEmbedBuilder.WithColor(Discord.Color.Blue);
-                            newEmbedBuilder.WithFooter($"ID: {commit.Id} | Change: {commit.ChangeSet} | {DateTime.Now.ToString()}");
-                            foreach (var guildId in commitFollowerChannel_IDS.Keys)
+                            foreach (var commit in differences)
                             {
-                                var guild = _client.GetGuild(guildId);
-                                if (guild == null) continue;
-
-                                foreach (var channelId in commitFollowerChannel_IDS[guildId])
+                                LogMessage($"[CommitTracker] Yeni Commit: {commit.id}");
+                                var commitlink = "https://commits.facepunch.com/" + commit.id;
+                                EmbedBuilder newEmbedBuilder = new EmbedBuilder();
+                                newEmbedBuilder.WithAuthor(commit.user.name, commit.user.avatar);
+                                newEmbedBuilder.WithTitle(commit.branch);
+                                newEmbedBuilder.WithDescription(commit.message);
+                                newEmbedBuilder.WithUrl(commitlink);
+                                newEmbedBuilder.WithColor(Discord.Color.Blue);
+                                newEmbedBuilder.WithFooter($"ID: {commit.id} | Change: {commit.changeset} | {DateTime.Now.ToString()}");
+                                foreach (var guildId in commitFollowerChannel_IDS.Keys)
                                 {
-                                    var channel = guild.GetTextChannel(channelId);
-                                    if (channel != null)
+                                    var guild = _client.GetGuild(guildId);
+                                    if (guild == null) continue;
+
+                                    foreach (var channelId in commitFollowerChannel_IDS[guildId])
                                     {
-                                        try
+                                        var channel = guild.GetTextChannel(channelId);
+                                        if (channel != null)
                                         {
                                             if (!CheckBotPerms(guild)) await NoPermsSendMessage(guild);
                                             if (!CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
                                             else await channel.SendMessageAsync("", false, newEmbedBuilder.Build());
                                         }
-                                        catch (Exception ex)
-                                        {
-                                            LogMessage($"Error - CheckForNewCommits: {ex}");
-                                            await webhookLogs.SendMessageAsync($"Error - CheckForNewCommits: {ex}");
-                                        }
                                     }
                                 }
                             }
                         }
+                        storedCommits.UnionWith(newCommits);
                     }
-                    storedCommits.UnionWith(newCommits);
                 }
-                LogMessage($"[CommitTracker] Depolanan: {storedCommits.Count}");
             }
-            catch (Exception ex)
+            else
             {
-                LogMessage($"Error - CheckForNewCommits: {ex}");
-                await webhookLogs.SendMessageAsync($"Error - CheckForNewCommits: {ex}");
+                LogMessage("[CommitTracker] Yeni veri alınamadı.");
             }
+            LogMessage($"[CommitTracker] Depolanan: {storedCommits.Count}");
         }
 
         private static Task ResponderUpdate()
@@ -820,22 +734,14 @@ namespace RT_Control
                     var channel = guild.GetTextChannel(channelId);
                     if (channel != null)
                     {
-                        try
+                        if (!CheckBotPerms(guild)) await NoPermsSendMessage(guild);
+                        if (!CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
+                        else
                         {
-                            if (!CheckBotPerms(guild)) await NoPermsSendMessage(guild);
-                            if (!CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
-                            else
-                            {
-                                var messages = await channel.GetMessagesAsync(limit: 1).FlattenAsync();
-                                var lastMessage = messages.FirstOrDefault() as IUserMessage;
-                                if (lastMessage != null && lastMessage.Author.Id == _client.CurrentUser.Id) await lastMessage.ModifyAsync(msg => msg.Embed = embedBuilder.Build());
-                                else await channel.SendMessageAsync("", false, embedBuilder.Build());
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            LogMessage($"Error - SendUpdateDateMessage: {ex}");
-                            await webhookLogs.SendMessageAsync($"Error - SendUpdateDateMessage: {ex}");
+                            var messages = await channel.GetMessagesAsync(limit: 1).FlattenAsync();
+                            var lastMessage = messages.FirstOrDefault() as IUserMessage;
+                            if (lastMessage != null && lastMessage.Author.Id == _client.CurrentUser.Id) await lastMessage.ModifyAsync(msg => msg.Embed = embedBuilder.Build());
+                            else await channel.SendMessageAsync("", false, embedBuilder.Build());
                         }
                     }
                 }
@@ -844,32 +750,16 @@ namespace RT_Control
 
         private async Task OnJoinedGuild(SocketGuild guild)
         {
-            try
-            {
-                LogMessage($"New guild: {guild}");
-                await webhookLogs.SendMessageAsync($"New guild: {guild}");
-                await Initialize_Channels();
-            }
-            catch (Exception ex)
-            {
-                LogMessage($"Error - OnJoinedGuild: {ex}");
-                await webhookLogs.SendMessageAsync($"Error - OnJoinedGuild: {ex}");
-            }
+            LogMessage($"New guild: {guild}");
+            await webhookLogs.SendMessageAsync($"New guild: {guild}");
+            await Initialize_Channels();
         }
 
         private async Task OnLeaveGuild(SocketGuild guild)
         {
-            try
-            {
-                LogMessage($"Guild leaved: {guild}");
-                await webhookLogs.SendMessageAsync($"Guild leaved: {guild}");
-                await Initialize_Channels();
-            }
-            catch (Exception ex)
-            {
-                LogMessage($"Error - OnLeaveGuild: {ex}");
-                await webhookLogs.SendMessageAsync($"Error - OnLeaveGuild: {ex}");
-            }
+            LogMessage($"Guild leaved: {guild}");
+            await webhookLogs.SendMessageAsync($"Guild leaved: {guild}");
+            await Initialize_Channels();
         }
 
         private Task BotReady()
@@ -898,18 +788,10 @@ namespace RT_Control
 
         private static async Task NoPermsSendMessage(SocketGuild CurrentGuild)
         {
-            try
-            {
-                LogMessage($"Yetersiz yetki. | Guild: {CurrentGuild.Name} - Id: {CurrentGuild.Id}");
-                await webhookLogs.SendMessageAsync($"Yetersiz yetki. | Guild: {CurrentGuild.Name} - Id: {CurrentGuild.Id}");
-                var user = _client.GetUserAsync(CurrentGuild.OwnerId).Result;
-                await UserExtensions.SendMessageAsync(user, $"Yetersiz yetki. | Guild: {CurrentGuild}\nBot gerekli izinlere sahip değil.");
-            }
-            catch (Exception ex)
-            {
-                LogMessage($"Error - Sending Direct Message: {ex}");
-                await webhookLogs.SendMessageAsync($"Error - Sending Direct Message: {ex}");
-            }
+            LogMessage($"Yetersiz yetki. | Guild: {CurrentGuild.Name} - Id: {CurrentGuild.Id}");
+            await webhookLogs.SendMessageAsync($"Yetersiz yetki. | Guild: {CurrentGuild.Name} - Id: {CurrentGuild.Id}");
+            var user = _client.GetUserAsync(CurrentGuild.OwnerId).Result;
+            await UserExtensions.SendMessageAsync(user, $"Yetersiz yetki. | Guild: {CurrentGuild}\nBot gerekli izinlere sahip değil.");
         }
 
         private static bool CheckBotPerms(SocketGuild guild)
@@ -943,22 +825,22 @@ namespace RT_Control
 
         public class Commit
         {
-            public int Id { get; set; }
-            public string Repository { get; set; }
-            public string Branch { get; set; }
-            public string ChangeSet { get; set; }
-            public DateTime CreateDate { get; set; }
-            public string Message { get; set; }
-            public User UserInfo { get; set; }
+            public int id { get; set; }
+            public string repo { get; set; }
+            public string branch { get; set; }
+            public string changeset { get; set; }
+            public DateTime created { get; set; }
+            public string message { get; set; }
+            public User user { get; set; }
         }
 
         public class User
         {
-            public string Name { get; set; }
-            public string Avatar { get; set; }
+            public string name { get; set; }
+            public string avatar { get; set; }
         }
 
-        public class SkinItem
+        private class SkinItem
         {
             public string Name { get; set; }
             public string Item { get; set; }
