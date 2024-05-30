@@ -44,6 +44,18 @@ namespace RT_Control
         private static bool _botReady = false;
         private static bool skinControlTimer = false;
 
+        private static ulong _SohbetKanalID = 1223037877911556110;
+
+        private static List<string> UpdateKeys = new List<string>
+        {
+            "wipe",
+            "güncelleme",
+            "global",
+            "update"
+        };
+
+        private const long forbiddenServer = 885147470500343939;
+
         private static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
 
         public async Task MainAsync()
@@ -60,13 +72,12 @@ namespace RT_Control
             _client.Ready += BotReady;
             _client.JoinedGuild += OnJoinedGuild;
             _client.LeftGuild += OnLeaveGuild;
+            _client.MessageReceived += MessageReceived;
 
             await _client.LoginAsync(TokenType.Bot, token);
             await _client.StartAsync();
 
             while (!_botReady) { await Task.Delay(1000); }
-
-            await _client.SetCustomStatusAsync($"Rust Güncelleme Notları");
 
             LogMessage("Starting tasks...");
             _ = Task.Run(Responder_Runner);
@@ -85,6 +96,7 @@ namespace RT_Control
             {
                 try
                 {
+                    await _client.SetCustomStatusAsync($"Rust Güncelleme Notları\ndiscord.gg/uFedWRP5tE - {DateTime.Now.ToShortTimeString()}");
                     await ResponderUpdate();
                     await SendUpdateDateMessage();
                     await Initialize_Channels();
@@ -123,6 +135,16 @@ namespace RT_Control
                 try
                 {
                     await CheckForNewSkins();
+                }
+                catch (TaskCanceledException)
+                {
+                    LogMessage("Information - Skin_Runner: Task Timeout.");
+                    await webhookLogs.SendMessageAsync("Information - Skin_Runner: Task Timeout.");
+                }
+                catch (WebException)
+                {
+                    LogMessage("Error - Skin_Runner: Webrequest error.");
+                    await webhookLogs.SendMessageAsync("Error - Skin_Runner: Webrequest error.");
                 }
                 catch (Exception ex)
                 {
@@ -169,6 +191,15 @@ namespace RT_Control
         {
             foreach (var CurrentGuild in _client.Guilds)
             {
+
+                if (CurrentGuild.Id == forbiddenServer)
+                {
+                    LogMessage($"Leaving guild: {CurrentGuild.Id}");
+                    await webhookLogs.SendMessageAsync($"Leaving guild: {CurrentGuild.Id}");
+                    await CurrentGuild.LeaveAsync();
+                    continue;
+                }
+
                 string categoryName = "rust-güncelleme┃🔔";
                 string[] channelNames = { "güncelleme-tarihi┃📅", "güncelleme-takipçisi┃💻", "haftalık-mağaza┃🛒", "commits┃📝" };
 
@@ -448,7 +479,7 @@ namespace RT_Control
             Bitmap backgroundImage;
             using (WebClient client = new WebClient())
             {
-                byte[] imageData = client.DownloadData("https://cdn.discordapp.com/attachments/1243011831891623936/1243016965715525733/back.png?ex=664ff142&is=664e9fc2&hm=a723c7433f7a340fcc3f4e3794fb2540229d562cf4b5eb3cf076f8c6b16e242a&");
+                byte[] imageData = client.DownloadData("https://cdn.discordapp.com/attachments/1243011831891623936/1243016965715525733/back.png?ex=6659d482&is=66588302&hm=497b28a531f26bd3d155a61d940867a74618be8447ab0058c70d8b4491a5c694&");
                 using (MemoryStream stream = new MemoryStream(imageData)) backgroundImage = new Bitmap(stream);
             }
 
@@ -746,6 +777,37 @@ namespace RT_Control
                     }
                 }
             }
+        }
+
+        private static Task MessageReceived(SocketMessage message)
+        {
+            var guild = _client.GetGuild(1223037877911556107);
+            if (guild == null) return Task.CompletedTask;
+
+            IUser user = message.Author;
+            string userTag = $"{user.Mention}";
+
+            if (message.Channel.Id == _SohbetKanalID)
+            {
+                if (message.Author.Id != _client.CurrentUser.Id)
+                {
+                    if (UpdateKeys.Any(keyword => message.Content.ToLower().Contains(keyword)))
+                    {
+                        LogMessage("[Responder] Güncelleme sorusu cevaplanıyor...");
+                        EmbedBuilder embedBuilder = new EmbedBuilder();
+                        embedBuilder.WithTitle(":information_source:  **Güncelleme Bilgisi**  :information_source:");
+                        embedBuilder.WithDescription("Her ayın ilk perşembesi (Yaz Dönemi 21:00 - Kış Dönemi 22:00) gelen güncelleme ile tüm sunuculara **Zorunlu Harita Sıfırlaması** atılır.\n**BP Sıfırlaması**(Blueprint/Öğrenilen Eşyalar) ise sunucu sahibinin isteğine bağlıdır.");
+                        embedBuilder.WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj");
+                        embedBuilder.WithFooter(DateTime.Now.ToString(), "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no");
+                        embedBuilder.AddField("Sonraki Güncelleme Tarihi:", $"<t:{_nextUpdateTimestamp}:F>", false);
+                        embedBuilder.AddField("Sonraki Güncellemeye Kalan Zaman:", $"<t:{_nextUpdateTimestamp}:R>", false);
+                        embedBuilder.AddField("Soran Kullanıcı", userTag, false);
+                        embedBuilder.WithColor(Discord.Color.Blue);
+                        return message.Channel.SendMessageAsync("", false, embedBuilder.Build());
+                    }
+                }
+            }
+            return Task.CompletedTask;
         }
 
         private async Task OnJoinedGuild(SocketGuild guild)
