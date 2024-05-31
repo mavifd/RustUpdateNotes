@@ -46,6 +46,8 @@ namespace RT_Control
 
         private static ulong _SohbetKanalID = 1223037877911556110;
 
+        private static ulong _PingMavi = 170569747497222145;
+
         private static List<string> UpdateKeys = new List<string>
         {
             "wipe",
@@ -79,6 +81,8 @@ namespace RT_Control
 
             while (!_botReady) { await Task.Delay(1000); }
 
+            await _client.SetCustomStatusAsync($"🔔 Rust Güncelleme Notları");
+
             LogMessage("Starting tasks...");
             _ = Task.Run(Responder_Runner);
             _ = Task.Run(Commit_Runner);
@@ -96,7 +100,6 @@ namespace RT_Control
             {
                 try
                 {
-                    await _client.SetCustomStatusAsync($"Rust Güncelleme Notları\ndiscord.gg/uFedWRP5tE - {DateTime.Now.ToShortTimeString()}");
                     await ResponderUpdate();
                     await SendUpdateDateMessage();
                     await Initialize_Channels();
@@ -105,7 +108,7 @@ namespace RT_Control
                 catch (Exception ex)
                 {
                     LogMessage($"Error - Responder_Runner: {ex}");
-                    await webhookLogs.SendMessageAsync($"Error - Responder_Runner: {ex}");
+                    await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Error - Responder_Runner: {ex}");
                 }
                 await Task.Delay(TimeSpan.FromHours(1));
             }
@@ -122,7 +125,7 @@ namespace RT_Control
                 catch (Exception ex)
                 {
                     LogMessage($"Error - Commit_Runner: {ex}");
-                    await webhookLogs.SendMessageAsync($"Error - Commit_Runner: {ex}");
+                    await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Error - Commit_Runner: {ex}");
                 }
                 await Task.Delay(TimeSpan.FromMinutes(1));
             }
@@ -139,17 +142,17 @@ namespace RT_Control
                 catch (TaskCanceledException)
                 {
                     LogMessage("Information - Skin_Runner: Task Timeout.");
-                    await webhookLogs.SendMessageAsync("Information - Skin_Runner: Task Timeout.");
+                    await webhookLogs.SendMessageAsync("Information - Skin_Runner: Task Timeout. (90 Second passed)");
                 }
                 catch (WebException)
                 {
                     LogMessage("Error - Skin_Runner: Webrequest error.");
-                    await webhookLogs.SendMessageAsync("Error - Skin_Runner: Webrequest error.");
+                    await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Error - Skin_Runner: Webrequest error.");
                 }
                 catch (Exception ex)
                 {
                     LogMessage($"Error - Skin_Runner: {ex}");
-                    await webhookLogs.SendMessageAsync($"Error - Skin_Runner: {ex}");
+                    await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Error - Skin_Runner: {ex}");
                 }
                 await Task.Delay(TimeSpan.FromMinutes(1));
             }
@@ -174,7 +177,7 @@ namespace RT_Control
                 catch (Exception ex)
                 {
                     LogMessage($"Error - Update_Runner: {ex}");
-                    await webhookLogs.SendMessageAsync($"Error - Update_Runner: {ex}");
+                    await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Error - Update_Runner: {ex}");
                 }
                 await Task.Delay(TimeSpan.FromSeconds(1));
             }
@@ -194,8 +197,8 @@ namespace RT_Control
 
                 if (CurrentGuild.Id == forbiddenServer)
                 {
-                    LogMessage($"Leaving guild: {CurrentGuild.Id}");
-                    await webhookLogs.SendMessageAsync($"Leaving guild: {CurrentGuild.Id}");
+                    LogMessage($"Banned guild: {CurrentGuild.Id}");
+                    await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Banned guild: {CurrentGuild.Id}");
                     await CurrentGuild.LeaveAsync();
                     continue;
                 }
@@ -362,7 +365,7 @@ namespace RT_Control
         private static async Task CheckForNewSkins()
         {
             var cancellationTokenSource = new CancellationTokenSource();
-            cancellationTokenSource.CancelAfter(TimeSpan.FromMinutes(1));
+            cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(90));
 
             var response_main = await httpClient.GetAsync(skinApiUrl, cancellationTokenSource.Token);
             if (!response_main.IsSuccessStatusCode) { LogMessage("[SkinTracker] response contect null."); return; }
@@ -813,14 +816,14 @@ namespace RT_Control
         private async Task OnJoinedGuild(SocketGuild guild)
         {
             LogMessage($"New guild: {guild}");
-            await webhookLogs.SendMessageAsync($"New guild: {guild}");
+            await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | New guild: {guild}");
             await Initialize_Channels();
         }
 
         private async Task OnLeaveGuild(SocketGuild guild)
         {
             LogMessage($"Guild leaved: {guild}");
-            await webhookLogs.SendMessageAsync($"Guild leaved: {guild}");
+            await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Guild leaved: {guild}");
             await Initialize_Channels();
         }
 
