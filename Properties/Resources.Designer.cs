@@ -61,6 +61,16 @@ namespace RT_Control.Properties {
         }
         
         /// <summary>
+        ///   System.Drawing.Bitmap türünde yerelleştirilmiş bir kaynak arar.
+        /// </summary>
+        internal static System.Drawing.Bitmap background {
+            get {
+                object obj = ResourceManager.GetObject("background", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
         ///   @ShutdownOnFailedCommand 1 //set to 0 if updating multiple servers at once
         ///@NoPromptForPassword 1
         ///login anonymous

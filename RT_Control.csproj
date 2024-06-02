@@ -133,5 +133,8 @@
   <ItemGroup>
     <None Include="Resources\rustserver.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\background.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

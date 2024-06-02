@@ -194,7 +194,6 @@ namespace RT_Control
         {
             foreach (var CurrentGuild in _client.Guilds)
             {
-
                 if (CurrentGuild.Id == forbiddenServer)
                 {
                     LogMessage($"Banned guild: {CurrentGuild.Id}");
@@ -480,10 +479,12 @@ namespace RT_Control
             int squareSize = imageSize * 400;
             Bitmap combinedImage = new Bitmap(squareSize, squareSize);
             Bitmap backgroundImage;
-            using (WebClient client = new WebClient())
+
+            using (MemoryStream stream = new MemoryStream())
             {
-                byte[] imageData = client.DownloadData("https://cdn.discordapp.com/attachments/1243011831891623936/1243016965715525733/back.png?ex=6659d482&is=66588302&hm=497b28a531f26bd3d155a61d940867a74618be8447ab0058c70d8b4491a5c694&");
-                using (MemoryStream stream = new MemoryStream(imageData)) backgroundImage = new Bitmap(stream);
+                Properties.Resources.background.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+                stream.Position = 0;
+                backgroundImage = new Bitmap(stream);
             }
 
             using (Graphics g = Graphics.FromImage(combinedImage))
