@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.Webhook;
 using Discord.WebSocket;
+using HtmlAgilityPack;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -11,7 +12,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -27,7 +27,7 @@ namespace RT_Control
         private static string token = "MTExMTAxNjg2MDc0NjUzMDgzNg.G5Tmp_.pk-mcC5NNneSCwWOZuvFwOzovem4rieLdLKT3k";
 
         private static string commitApiUrl = "https://commits.facepunch.com/r/rust_reboot/?format=json";
-        private static string skinApiUrl = "https://rust.scmm.app/store";
+        private static string skinApiUrl = "https://store.steampowered.com/itemstore/252490/browse/?filter=Limited";
 
         private static HashSet<string> storedCommits = new HashSet<string>();
         private static HashSet<string> storedSkins = new HashSet<string>();
@@ -42,19 +42,12 @@ namespace RT_Control
 
         private static long _nextUpdateTimestamp = 0;
         private static bool _botReady = false;
-        private static bool skinControlTimer = false;
 
         private static ulong _SohbetKanalID = 1223037877911556110;
 
         private static ulong _PingMavi = 170569747497222145;
 
-        private static List<string> UpdateKeys = new List<string>
-        {
-            "wipe",
-            "güncelleme",
-            "global",
-            "update"
-        };
+        private static List<string> UpdateKeys = new List<string> { "wipe", "güncelleme", "global", "update" };
 
         private const long forbiddenServer = 885147470500343939;
 
@@ -84,6 +77,7 @@ namespace RT_Control
             await _client.SetCustomStatusAsync($"🔔 Rust Güncelleme Notları");
 
             LogMessage("Starting tasks...");
+
             _ = Task.Run(Responder_Runner);
             _ = Task.Run(Commit_Runner);
             _ = Task.Run(Skin_Runner);
@@ -377,7 +371,7 @@ namespace RT_Control
 
             var newSkins = skinData.Select(Skin => Skin.Name).ToList();
 
-            foreach (var item in skinData) LogMessage($"[SkinTracker] Name: {item.Name} | Price: {item.Price} | Type: {item.Item} | Image: {item.Image}");
+            foreach (var item in skinData) LogMessage($"[SkinTracker] Name: {item.Name} | Price: {item.Price} | Image: {item.Image}");
 
             if (storedSkins.Count == 0)
             {
@@ -389,14 +383,6 @@ namespace RT_Control
                 var differences = skinData.Where(Skin => newSkins.Contains(Skin.Name) && !storedSkins.Contains(Skin.Name)).ToList();
                 if (differences.Any())
                 {
-                    if (!skinControlTimer)
-                    {
-                        await Task.Delay(TimeSpan.FromMinutes(10));
-                        skinControlTimer = true;
-                        return;
-                    }
-                    skinControlTimer = false;
-
                     var ourimage = CreateBigImage(skinData);
                     ourimage.Save("skinimage.png", System.Drawing.Imaging.ImageFormat.Png);
                     if (ourimage == null) return;
@@ -420,16 +406,13 @@ namespace RT_Control
                     {
                         var guild = _client.GetGuild(guildId);
                         if (guild == null) continue;
-
                         foreach (var channelId in storeCheckerChannel_IDS[guildId])
                         {
                             var channel = guild.GetTextChannel(channelId);
-                            if (channel != null)
-                            {
-                                if (!CheckBotPerms(guild)) await NoPermsSendMessage(guild);
-                                if (!CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
-                                else await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
-                            }
+                            if (channel == null) continue;
+                            if (!CheckBotPerms(guild)) await NoPermsSendMessage(guild);
+                            if (!CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
+                            else await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
                         }
                     }
 
@@ -441,23 +424,19 @@ namespace RT_Control
                             fileStream.CopyTo(memoryStream);
                             imageData = memoryStream.ToArray();
                         }
-
                         foreach (var guildId in storeCheckerChannel_IDS.Keys)
                         {
                             var guild = _client.GetGuild(guildId);
                             if (guild == null) continue;
-
                             foreach (var channelId in storeCheckerChannel_IDS[guildId])
                             {
                                 var channel = guild.GetTextChannel(channelId);
-                                if (channel != null)
+                                if (channel == null) continue;
+                                using (var memoryStream = new MemoryStream(imageData))
                                 {
-                                    using (var memoryStream = new MemoryStream(imageData))
-                                    {
-                                        if (!CheckBotPerms(guild)) await NoPermsSendMessage(guild);
-                                        if (!CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
-                                        else await channel.SendFileAsync(memoryStream, "skinimage.png");
-                                    }
+                                    if (!CheckBotPerms(guild)) await NoPermsSendMessage(guild);
+                                    if (!CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
+                                    else await channel.SendFileAsync(memoryStream, "skinimage.png");
                                 }
                             }
                         }
@@ -474,7 +453,6 @@ namespace RT_Control
             var imageUrls = skindata.Select(Skin => Skin.Image).ToList();
             var skinNames = skindata.Select(Skin => Skin.Name).ToList();
             var skinPrices = skindata.Select(Skin => Skin.Price).ToList();
-            var skinType = skindata.Select(Skin => Skin.Item).ToList();
             int imageSize = (int)Math.Ceiling(Math.Sqrt(imageUrls.Count));
             int squareSize = imageSize * 400;
             Bitmap combinedImage = new Bitmap(squareSize, squareSize);
@@ -506,7 +484,6 @@ namespace RT_Control
                             g.DrawImage(img, x * 400, y * 400, 350, 350);
 
                             var skinname = skinNames[index];
-                            var skintype = skinType[index];
                             var skinprice = skinPrices[index];
 
                             if (index < imageUrls.Count)
@@ -523,7 +500,6 @@ namespace RT_Control
                                 float textY = (y + 1) * 400 - textSize.Height;
                                 g.DrawString(skinname, font, Brushes.White, new PointF(textX, textY - 30));
                                 g.DrawString(skinprice, font, Brushes.ForestGreen, new PointF(textX, textY));
-                                g.DrawString(skintype, font2, Brushes.DarkGray, new PointF(textX + 75, textY + 5));
                             }
 
                             using (Pen pen = new Pen(System.Drawing.Color.Black, 2))
@@ -542,52 +518,29 @@ namespace RT_Control
             return combinedImage;
         }
 
-        private static List<string> ExtractImageUrlsStartingWith(string html)
-        {
-            List<string> imageUrls = new List<string>();
-            string pattern = @"<img.*?src=""(.*?)"".*?>";
-            MatchCollection matches = Regex.Matches(html, pattern, RegexOptions.IgnoreCase);
-            foreach (Match match in matches)
-            {
-                string src = match.Groups[1].Value;
-                if (!src.StartsWith("https://avatars", StringComparison.OrdinalIgnoreCase)
-                    && (src.StartsWith("https://steamcommunity-a.akamaihd.net/economy", StringComparison.OrdinalIgnoreCase) ||
-                    src.StartsWith("https://files.facepunch", StringComparison.OrdinalIgnoreCase))) imageUrls.Add(src);
-            }
-            return imageUrls;
-        }
-
         private static List<SkinItem> ParseSkins(string html)
         {
             List<SkinItem> skinItems = new List<SkinItem>();
-            HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
+            HtmlDocument doc = new HtmlDocument();
             doc.LoadHtml(html);
-            var storeItems = doc.DocumentNode.SelectNodes("//div[@class='store-item full-height']");
-            List<string> imageUrls = ExtractImageUrlsStartingWith(html);
-            if (storeItems != null)
+            var storeItems = doc.DocumentNode.SelectNodes("//div[contains(@class, 'item_def_grid_item')]");
+            if (storeItems == null) return null;
+            for (int i = 0; i < storeItems.Count; i++)
             {
-                if (imageUrls.Count >= storeItems.Count)
-                {
-                    for (int i = 0; i < storeItems.Count; i++)
-                    {
-                        var storeItem = storeItems[i];
-                        var imageUrl = imageUrls[i];
+                var storeItem = storeItems[i];
+                SkinItem skinItem = new SkinItem();
 
-                        SkinItem skinItem = new SkinItem();
+                HtmlNode nameNode = storeItem.SelectSingleNode(".//div[contains(@class, 'item_def_name')]/a");
+                HtmlNode priceNode = storeItem.SelectSingleNode(".//div[contains(@class, 'item_def_price')]");
+                HtmlNode itemImageNode = storeItem.SelectSingleNode(".//div[contains(@class, 'item_def_icon_container')]/a/img");
 
-                        var nameNode = storeItem.SelectSingleNode(".//h6[@class='mud-typography mud-typography-h6']");
-                        var itemTypeNode = storeItem.SelectSingleNode(".//h6[@class='mud-typography mud-typography-subtitle1 mud-secondary-text']");
-                        var priceNode = storeItem.SelectSingleNode(".//h6[@class='mud-typography mud-typography-h6 no-wrap']");
+                if (nameNode != null) skinItem.Name = nameNode.InnerText.Trim();
+                if (priceNode != null) skinItem.Price = priceNode.InnerText.Trim();
+                if (itemImageNode != null) skinItem.Image = itemImageNode.GetAttributeValue("src", string.Empty);
 
-                        if (nameNode != null) skinItem.Name = nameNode.InnerText.Trim();
-                        if (itemTypeNode != null) skinItem.Item = itemTypeNode.InnerText.Trim();
-                        if (priceNode != null) skinItem.Price = priceNode.SelectSingleNode(".//span")?.InnerText.Trim();
-                        skinItem.Image = imageUrl;
-
-                        skinItems.Add(skinItem);
-                    }
-                }
+                skinItems.Add(skinItem);
             }
+
             return skinItems;
         }
 
@@ -909,7 +862,6 @@ namespace RT_Control
         private class SkinItem
         {
             public string Name { get; set; }
-            public string Item { get; set; }
             public string Price { get; set; }
             public string Image { get; set; }
         }
