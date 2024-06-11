@@ -49,7 +49,7 @@ namespace RT_Control
 
         private static List<string> UpdateKeys = new List<string> { "wipe", "güncelleme", "global", "update" };
 
-        private const long forbiddenServer = 885147470500343939;
+        private const long forbiddenServer = 1216328690506403950;
 
         private static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
 
@@ -181,12 +181,12 @@ namespace RT_Control
         {
             var botUser = _client.CurrentUser;
             await webhookLogs.SendMessageAsync($"Server Count: {botUser.MutualGuilds.Count}");
-            foreach (var guild in botUser.MutualGuilds) await webhookLogs.SendMessageAsync($"Guild Name: {guild.Name} - Guild ID: {guild.Id}");
         }
 
         private static async Task Initialize_Channels()
         {
-            foreach (var CurrentGuild in _client.Guilds)
+            var guildlist = _client.Guilds;
+            foreach (var CurrentGuild in guildlist)
             {
                 if (CurrentGuild.Id == forbiddenServer)
                 {
@@ -251,7 +251,7 @@ namespace RT_Control
 
                             case 1:
                                 updateTrackerChannel_Local_IDS.Add(newChannel.Id);
-                                await newChannel.SendMessageAsync("**Güncelleme Takipçisi** kanalı başarıyla oluşturuldu.\nSunucu veya Oyuncu taraflı bir güncelleme tespit edildiğinde bu kanalda bildirim gelecektir.");
+                                await newChannel.SendMessageAsync("**Güncelleme Takipçisi** kanalı başarıyla oluşturuldu.\nSunucu veya Oyuncu taraflı bir güncelleme tespit edildiğinde bu kanalda bildirim gelecektir.\nGüncelleme notlarını ");
                                 break;
 
                             case 2:
@@ -402,11 +402,13 @@ namespace RT_Control
                     embedBuildformain.WithDescription($"**{skincount}** yeni kostüm mağazaye eklendi.\n\n Toplam Kostüm Değeri: **{totalcost}$**");
                     embedBuildformain.WithUrl("https://store.steampowered.com/itemstore/252490/");
 
-                    foreach (var guildId in storeCheckerChannel_IDS.Keys)
+                    var guildlist = storeCheckerChannel_IDS.Keys;
+                    foreach (var guildId in guildlist)
                     {
                         var guild = _client.GetGuild(guildId);
                         if (guild == null) continue;
-                        foreach (var channelId in storeCheckerChannel_IDS[guildId])
+                        var channelIds = storeCheckerChannel_IDS[guildId].ToList();
+                        foreach (var channelId in channelIds)
                         {
                             var channel = guild.GetTextChannel(channelId);
                             if (channel == null) continue;
@@ -424,11 +426,13 @@ namespace RT_Control
                             fileStream.CopyTo(memoryStream);
                             imageData = memoryStream.ToArray();
                         }
-                        foreach (var guildId in storeCheckerChannel_IDS.Keys)
+                        var guidlist = storeCheckerChannel_IDS.Keys;
+                        foreach (var guildId in guidlist)
                         {
                             var guild = _client.GetGuild(guildId);
                             if (guild == null) continue;
-                            foreach (var channelId in storeCheckerChannel_IDS[guildId])
+                            var channelIds = storeCheckerChannel_IDS[guildId].ToList();
+                            foreach (var channelId in channelIds)
                             {
                                 var channel = guild.GetTextChannel(channelId);
                                 if (channel == null) continue;
@@ -593,12 +597,13 @@ namespace RT_Control
                 embedBuilder.WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj");
                 embedBuilder.AddField("Sürüm Numarası Değişimi:", changenumber_t, true); ;
 
-                foreach (var guildId in updateTrackerChannel_IDS.Keys)
+                var guildlist = updateTrackerChannel_IDS.Keys;
+                foreach (var guildId in guildlist)
                 {
                     var guild = _client.GetGuild(guildId);
                     if (guild == null) continue;
-
-                    foreach (var channelId in updateTrackerChannel_IDS[guildId])
+                    var channelids = updateTrackerChannel_IDS[guildId].ToList();
+                    foreach (var channelId in channelids)
                     {
                         var channel = guild.GetTextChannel(channelId);
                         if (channel != null)
@@ -641,12 +646,13 @@ namespace RT_Control
                                 newEmbedBuilder.WithUrl(commitlink);
                                 newEmbedBuilder.WithColor(Discord.Color.Blue);
                                 newEmbedBuilder.WithFooter($"ID: {commit.id} | Change: {commit.changeset} | {DateTime.Now.ToString()}");
-                                foreach (var guildId in commitFollowerChannel_IDS.Keys)
+                                var guildlist = commitFollowerChannel_IDS.Keys;
+                                foreach (var guildId in guildlist)
                                 {
                                     var guild = _client.GetGuild(guildId);
                                     if (guild == null) continue;
-
-                                    foreach (var channelId in commitFollowerChannel_IDS[guildId])
+                                    var channelids = commitFollowerChannel_IDS[guildId].ToList();   
+                                    foreach (var channelId in channelids)
                                     {
                                         var channel = guild.GetTextChannel(channelId);
                                         if (channel != null)
@@ -713,11 +719,13 @@ namespace RT_Control
             embedBuilder.WithColor(Discord.Color.Blue);
             embedBuilder.WithFooter($"En Son Tarih Kontrolü: {DateTime.Now.ToString()}");
 
-            foreach (var guildId in updateDateChannel_IDS.Keys)
+            var guildlist = updateDateChannel_IDS.Keys;
+            foreach (var guildId in guildlist)
             {
                 var guild = _client.GetGuild(guildId);
                 if (guild == null) continue;
-                foreach (var channelId in updateDateChannel_IDS[guildId])
+                var channelids = updateDateChannel_IDS[guildId].ToList();
+                foreach (var channelId in channelids)
                 {
                     var channel = guild.GetTextChannel(channelId);
                     if (channel != null)
