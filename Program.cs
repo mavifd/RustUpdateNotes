@@ -49,7 +49,7 @@ namespace RT_Control
 
         private static List<string> UpdateKeys = new List<string> { "wipe", "güncelleme", "global", "update" };
 
-        private const long forbiddenServer = 1192504321426862170;
+        //private const long forbiddenServer = 0;
 
         private static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
 
@@ -188,13 +188,13 @@ namespace RT_Control
             var guildlist = _client.Guilds;
             foreach (var CurrentGuild in guildlist)
             {
-                if (CurrentGuild.Id == forbiddenServer)
-                {
-                    LogMessage($"Banned guild: {CurrentGuild.Id}");
-                    await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Banned guild: {CurrentGuild.Id}");
-                    await CurrentGuild.LeaveAsync();
-                    continue;
-                }
+                //if (CurrentGuild.Id == forbiddenServer)
+                //{
+                //    LogMessage($"Banned guild: {CurrentGuild.Id}");
+                //    await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Banned guild: {CurrentGuild.Id}");
+                //    await CurrentGuild.LeaveAsync();
+                //    continue;
+                //}
 
                 string categoryName = "rust-güncelleme┃🔔";
                 string[] channelNames = { "güncelleme-tarihi┃📅", "güncelleme-takipçisi┃💻", "haftalık-mağaza┃🛒", "commits┃📝" };
@@ -263,12 +263,12 @@ namespace RT_Control
                         {
                             case 0:
                                 updateDateChannel_Local_IDS.Add(newChannel.Id);
-                                await newChannel.SendMessageAsync("**Güncelleme Tarihi** kanalı başarıyla oluşturuldu.\nGüncelleme bilgisi saatlik olarak güncellenmektir. 1 Saat içinde güncelleme bilgisi bu kanala eklenecektir.");
+                                await newChannel.SendMessageAsync("**Güncelleme Tarihi** kanalı başarıyla oluşturuldu.\nGüncelleme bilgisi saatlik olarak güncellenmektir. Güncelleme bilgisi 1 saat içinde bu kanala eklenecektir.");
                                 break;
 
                             case 1:
                                 updateTrackerChannel_Local_IDS.Add(newChannel.Id);
-                                await newChannel.SendMessageAsync("**Güncelleme Takipçisi** kanalı başarıyla oluşturuldu.\nSunucu veya Oyuncu taraflı bir güncelleme tespit edildiğinde bu kanalda bildirim gelecektir.\nGüncelleme notlarını ");
+                                await newChannel.SendMessageAsync("**Güncelleme Takipçisi** kanalı başarıyla oluşturuldu.\nSunucu veya Oyuncu taraflı bir güncelleme tespit edildiğinde bu kanalda bildirim gelecektir.");
                                 break;
 
                             case 2:
