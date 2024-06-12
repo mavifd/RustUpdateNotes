@@ -32,6 +32,7 @@ namespace RT_Control
         private static HashSet<string> storedCommits = new HashSet<string>();
         private static HashSet<string> storedSkins = new HashSet<string>();
 
+        private static Dictionary<ulong, List<ulong>> updateNotesChannel_IDS = new Dictionary<ulong, List<ulong>>();
         private static Dictionary<ulong, List<ulong>> updateDateChannel_IDS = new Dictionary<ulong, List<ulong>>();
         private static Dictionary<ulong, List<ulong>> updateTrackerChannel_IDS = new Dictionary<ulong, List<ulong>>();
         private static Dictionary<ulong, List<ulong>> storeCheckerChannel_IDS = new Dictionary<ulong, List<ulong>>();
@@ -197,7 +198,7 @@ namespace RT_Control
                 //}
 
                 string categoryName = "rust-güncelleme┃🔔";
-                string[] channelNames = { "güncelleme-tarihi┃📅", "güncelleme-takipçisi┃💻", "haftalık-mağaza┃🛒", "commits┃📝" };
+                string[] channelNames = { "güncelleme-notları┃📋", "güncelleme-tarihi┃📅", "güncelleme-takipçisi┃💻", "haftalık-mağaza┃🛒", "commits┃📝" };
 
                 if (!CheckBotPerms(CurrentGuild)) await NoPermsSendMessage(CurrentGuild);
 
@@ -207,6 +208,7 @@ namespace RT_Control
                 if (categoryCheck != null) { LogMessage($"Category already created. | Guild: {CurrentGuild} | Category: {categoryCheck.Id}"); categoryCurrent = categoryCheck; }
                 else { categoryCurrent = await CurrentGuild.CreateCategoryChannelAsync(categoryName); LogMessage($"Category created. | Guild: {CurrentGuild} - Category: {categoryCurrent.Id}"); }
 
+                List<ulong> updateNotesChannel_Local_IDS = new List<ulong>();
                 List<ulong> updateDateChannel_Local_IDS = new List<ulong>();
                 List<ulong> updateTrackerChannel_Local_IDS = new List<ulong>();
                 List<ulong> storeCheckerChannel_Local_IDS = new List<ulong>();
@@ -215,10 +217,12 @@ namespace RT_Control
                 for (int i = 0; i < channelNames.Length; i++)
                 {
                     string channelName = channelNames[i];
+
+                    if (CurrentGuild.Id == 1223037877911556107 && channelName == "güncelleme-notları┃📋") continue;
+
                     var channelCheck = CurrentGuild.TextChannels.FirstOrDefault(c => c.Name == channelName && c.CategoryId == categoryCurrent.Id);
                     if (channelCheck != null)
                     {
-
                         if (!CheckChannelPerms(channelCheck))
                         {
                             LogMessage($"Kanal yetkileri yeniden ayarlanıyor. - {channelCheck.Name} | {CurrentGuild.Name}");
@@ -232,18 +236,22 @@ namespace RT_Control
                         switch (i)
                         {
                             case 0:
-                                updateDateChannel_Local_IDS.Add(channelCheck.Id);
+                                updateNotesChannel_Local_IDS.Add(channelCheck.Id);
                                 break;
 
                             case 1:
-                                updateTrackerChannel_Local_IDS.Add(channelCheck.Id);
+                                updateDateChannel_Local_IDS.Add(channelCheck.Id);
                                 break;
 
                             case 2:
-                                storeCheckerChannel_Local_IDS.Add(channelCheck.Id);
+                                updateTrackerChannel_Local_IDS.Add(channelCheck.Id);
                                 break;
 
                             case 3:
+                                storeCheckerChannel_Local_IDS.Add(channelCheck.Id);
+                                break;
+
+                            case 4:
                                 commitFollowerChannel_Local_IDS.Add(channelCheck.Id);
                                 break;
                         }
@@ -255,38 +263,116 @@ namespace RT_Control
 
                         LogMessage($"Kanal yetkileri ayarlanıyor. - {newChannel.Name} | {CurrentGuild.Name}");
                         await webhookLogs.SendMessageAsync($"Kanal yetkileri ayarlanıyor. - {newChannel.Name} | {CurrentGuild.Name}");
-                        var botUser = _client.CurrentUser;
-                        var overwritePermissions = new OverwritePermissions(sendMessages: PermValue.Allow, viewChannel: PermValue.Allow, manageMessages: PermValue.Allow, readMessageHistory: PermValue.Allow, attachFiles: PermValue.Allow, embedLinks: PermValue.Allow, manageChannel: PermValue.Allow, manageRoles: PermValue.Allow, mentionEveryone: PermValue.Allow);
-                        await newChannel.AddPermissionOverwriteAsync(botUser, overwritePermissions);
+
+                        try
+                        {
+                            var botUser = _client.CurrentUser;
+                            var overwritePermissions = new OverwritePermissions(sendMessages: PermValue.Allow, viewChannel: PermValue.Allow, manageMessages: PermValue.Allow, readMessageHistory: PermValue.Allow, attachFiles: PermValue.Allow, embedLinks: PermValue.Allow, manageChannel: PermValue.Allow, manageRoles: PermValue.Allow, mentionEveryone: PermValue.Allow);
+                            await newChannel.AddPermissionOverwriteAsync(botUser, overwritePermissions);
+                        }
+                        catch (Exception)
+                        {
+                            LogMessage($"Kanal yetkisi ayarlanamadı.  - {newChannel.Name} | {CurrentGuild.Name}");
+                            await webhookLogs.SendMessageAsync($"Kanal yetkisi ayarlanamadı.  - {newChannel.Name} | {CurrentGuild.Name}");
+                        }
 
                         switch (i)
                         {
                             case 0:
+                                updateNotesChannel_Local_IDS.Add(newChannel.Id);
+                                try
+                                {
+                                    await newChannel.SendMessageAsync("**Güncelleme Notları** kanalı başarıyla oluşturuldu.\nGüncelleme notları bu kanalda paylaşılacaktır.\n **\r\nGüncelleme Takipçisi\r\n bu kanala \r\nRust Güncelleme Notları #güncelleme-notları┃📋 ekledi.** Mesajını görmezseniz yetersiz yetki mevcuttur.");
+                                    var announcementChannel = _client.GetChannel(1223058873573969920) as SocketNewsChannel;
+                                    var targetChannel = _client.GetChannel(newChannel.Id) as SocketTextChannel;
+                                    var followChannel = await announcementChannel.FollowAnnouncementChannelAsync(targetChannel);
+                                }
+                                catch (Exception)
+                                {
+                                    LogMessage($"Güncelleme notları takip edilemedi. | {CurrentGuild.Name}");
+                                    await webhookLogs.SendMessageAsync($"Güncelleme notları takip edilemedi. - {newChannel.Name} | {CurrentGuild.Name}");
+                                }
+                                break;
+
+                            case 1:
                                 updateDateChannel_Local_IDS.Add(newChannel.Id);
                                 await newChannel.SendMessageAsync("**Güncelleme Tarihi** kanalı başarıyla oluşturuldu.\nGüncelleme bilgisi saatlik olarak güncellenmektir. Güncelleme bilgisi 1 saat içinde bu kanala eklenecektir.");
                                 break;
 
-                            case 1:
+                            case 2:
                                 updateTrackerChannel_Local_IDS.Add(newChannel.Id);
                                 await newChannel.SendMessageAsync("**Güncelleme Takipçisi** kanalı başarıyla oluşturuldu.\nSunucu veya Oyuncu taraflı bir güncelleme tespit edildiğinde bu kanalda bildirim gelecektir.");
                                 break;
 
-                            case 2:
+                            case 3:
                                 storeCheckerChannel_Local_IDS.Add(newChannel.Id);
                                 await newChannel.SendMessageAsync("**Haftalık Mağaza** kanalı başarıyla oluşturuldu.\nHer hafta mağaza yenilediğinde gelen skinlerin görsellerini ve fiyatlarını bu kanalda görebilirsiniz.");
                                 break;
 
-                            case 3:
+                            case 4:
                                 commitFollowerChannel_Local_IDS.Add(newChannel.Id);
                                 await newChannel.SendMessageAsync("**Commits** kanalı başarıyla oluşturuldu.\nYeni bir commit tespit edildiğinde bu kanalda görebilirsiniz.");
                                 break;
                         }
                     }
                 }
+
+                if (CurrentGuild.Id != 1223037877911556107)
+                {
+                    if (IsChannelOrderCorrect(CurrentGuild, categoryCurrent.Id, updateNotesChannel_Local_IDS, updateDateChannel_Local_IDS, updateTrackerChannel_Local_IDS, storeCheckerChannel_Local_IDS, commitFollowerChannel_Local_IDS))
+                    {
+                        LogMessage("Channel order is correct.");
+                    }
+                    else
+                    {
+                        LogMessage("Channel order is incorrect, setting the correct order.");
+                        await SetChannelOrder(CurrentGuild, categoryCurrent.Id, updateNotesChannel_Local_IDS, updateDateChannel_Local_IDS, updateTrackerChannel_Local_IDS, storeCheckerChannel_Local_IDS, commitFollowerChannel_Local_IDS);
+                    }
+                }
+
+                updateNotesChannel_IDS[CurrentGuild.Id] = updateNotesChannel_Local_IDS;
                 updateDateChannel_IDS[CurrentGuild.Id] = updateDateChannel_Local_IDS;
                 updateTrackerChannel_IDS[CurrentGuild.Id] = updateTrackerChannel_Local_IDS;
                 storeCheckerChannel_IDS[CurrentGuild.Id] = storeCheckerChannel_Local_IDS;
                 commitFollowerChannel_IDS[CurrentGuild.Id] = commitFollowerChannel_Local_IDS;
+            }
+        }
+
+        private static bool IsChannelOrderCorrect(SocketGuild guild, ulong categoryId, params List<ulong>[] channelIdsLists)
+        {
+            int position = 0;
+            foreach (var channelIds in channelIdsLists)
+            {
+                foreach (var channelId in channelIds)
+                {
+                    var channel = guild.GetTextChannel(channelId);
+                    if (channel != null && channel.CategoryId == categoryId)
+                    {
+                        if (channel.Position != position)
+                        {
+                            return false;
+                        }
+                        position++;
+                    }
+                }
+            }
+            return true;
+        }
+
+        private static async Task SetChannelOrder(SocketGuild guild, ulong categoryId, params List<ulong>[] channelIdsLists)
+        {
+            int position = 0;
+            foreach (var channelIds in channelIdsLists)
+            {
+                foreach (var channelId in channelIds)
+                {
+                    var channel = guild.GetTextChannel(channelId);
+                    if (channel != null && channel.CategoryId == categoryId)
+                    {
+                        await channel.ModifyAsync(prop => prop.Position = position);
+                        position++;
+                    }
+                }
             }
         }
 
@@ -763,9 +849,6 @@ namespace RT_Control
 
         private static Task MessageReceived(SocketMessage message)
         {
-            var guild = _client.GetGuild(1223037877911556107);
-            if (guild == null) return Task.CompletedTask;
-
             IUser user = message.Author;
             string userTag = $"{user.Mention}";
 
