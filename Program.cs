@@ -49,7 +49,7 @@ namespace RT_Control
 
         private static List<string> UpdateKeys = new List<string> { "wipe", "güncelleme", "global", "update" };
 
-        private const long forbiddenServer = 1216328690506403950;
+        private const long forbiddenServer = 1192504321426862170;
 
         private static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
 
@@ -218,6 +218,16 @@ namespace RT_Control
                     var channelCheck = CurrentGuild.TextChannels.FirstOrDefault(c => c.Name == channelName && c.CategoryId == categoryCurrent.Id);
                     if (channelCheck != null)
                     {
+
+                        if (!CheckChannelPerms(channelCheck))
+                        {
+                            LogMessage($"Kanal yetkileri yeniden ayarlanıyor. - {channelCheck.Name} | {CurrentGuild.Name}");
+                            await webhookLogs.SendMessageAsync($"Kanal yetkileri yeniden ayarlanıyor. - {channelCheck.Name} | {CurrentGuild.Name}");
+                            var botUser = _client.CurrentUser;
+                            var overwritePermissions = new OverwritePermissions(sendMessages: PermValue.Allow, viewChannel: PermValue.Allow, manageMessages: PermValue.Allow, readMessageHistory: PermValue.Allow, attachFiles: PermValue.Allow, embedLinks: PermValue.Allow, manageChannel: PermValue.Allow, manageRoles: PermValue.Allow, mentionEveryone: PermValue.Allow);
+                            await channelCheck.AddPermissionOverwriteAsync(botUser, overwritePermissions);
+                        }
+
                         LogMessage($"Channel already created: {channelCheck.Id}");
                         switch (i)
                         {
@@ -242,6 +252,13 @@ namespace RT_Control
                     {
                         var newChannel = await CurrentGuild.CreateTextChannelAsync(channelName, x => x.CategoryId = categoryCurrent.Id);
                         LogMessage($"New Channel created: {newChannel.Id}");
+
+                        LogMessage($"Kanal yetkileri ayarlanıyor. - {newChannel.Name} | {CurrentGuild.Name}");
+                        await webhookLogs.SendMessageAsync($"Kanal yetkileri ayarlanıyor. - {newChannel.Name} | {CurrentGuild.Name}");
+                        var botUser = _client.CurrentUser;
+                        var overwritePermissions = new OverwritePermissions(sendMessages: PermValue.Allow, viewChannel: PermValue.Allow, manageMessages: PermValue.Allow, readMessageHistory: PermValue.Allow, attachFiles: PermValue.Allow, embedLinks: PermValue.Allow, manageChannel: PermValue.Allow, manageRoles: PermValue.Allow, mentionEveryone: PermValue.Allow);
+                        await newChannel.AddPermissionOverwriteAsync(botUser, overwritePermissions);
+
                         switch (i)
                         {
                             case 0:
@@ -364,10 +381,10 @@ namespace RT_Control
             if (!response_main.IsSuccessStatusCode) { LogMessage("[SkinTracker] response contect null."); return; }
 
             var response = await response_main.Content.ReadAsStringAsync();
-            if (response == "") { LogMessage("[SkinTracker] response null."); return; }
+            if (string.IsNullOrEmpty(response)) { LogMessage("[SkinTracker] response null."); return; }
 
             List<SkinItem> skinData = ParseSkins(response);
-            if (skinData.Count == 0) { LogMessage("[SkinTracker] skinData null."); return; }
+            if (skinData == null || skinData.Count == 0) { LogMessage("[SkinTracker] skinData null."); return; }
 
             var newSkins = skinData.Select(Skin => Skin.Name).ToList();
 
@@ -651,7 +668,7 @@ namespace RT_Control
                                 {
                                     var guild = _client.GetGuild(guildId);
                                     if (guild == null) continue;
-                                    var channelids = commitFollowerChannel_IDS[guildId].ToList();   
+                                    var channelids = commitFollowerChannel_IDS[guildId].ToList();
                                     foreach (var channelId in channelids)
                                     {
                                         var channel = guild.GetTextChannel(channelId);
