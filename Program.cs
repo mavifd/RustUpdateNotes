@@ -251,8 +251,6 @@ namespace RT_Control
                     {
                         LogMessage($"Channel already created: {channelCheck.Id}");
 
-                        if (!CheckChannelPerms(channelCheck)) await NoPermsSendMessage(CurrentGuild);
-
                         switch (i)
                         {
 
@@ -284,7 +282,6 @@ namespace RT_Control
 
                         LogMessage($"Kanal yetkileri ayarlanıyor. - {newChannel.Name} | {CurrentGuild.Name}");
                         await webhookLogs.SendMessageAsync($"Kanal yetkileri ayarlanıyor. - {newChannel.Name} | {CurrentGuild.Name}");
-
 
                         try
                         {
@@ -865,11 +862,6 @@ namespace RT_Control
         {
             LogMessage($"Yetersiz yetki. | Guild: {CurrentGuild.Name} - Id: {CurrentGuild.Id}");
             await webhookLogs.SendMessageAsync($"Yetersiz yetki. | Guild: {CurrentGuild.Name} - Id: {CurrentGuild.Id}");
-
-            await Task.Delay(1000);
-
-            var user = _client.GetUserAsync(CurrentGuild.OwnerId).Result;
-            if (user != null) await UserExtensions.SendMessageAsync(user, $"Yetersiz yetki. | Guild: {CurrentGuild}\nBot gerekli izinlere sahip olmadığı için işlevlerini tam manasıyla yerine getiremiyor.");
         }
 
         private static bool CheckBotPerms(SocketGuild guild)
