@@ -45,12 +45,11 @@ namespace RT_Control
         private static bool _botReady = false;
 
         private static ulong _SohbetKanalID = 1223037877911556110;
-
         private static ulong _PingMavi = 170569747497222145;
 
         private static List<string> UpdateKeys = new List<string> { "wipe", "güncelleme", "global", "update" };
 
-        //private const long forbiddenServer = 0;
+        private const long forbiddenServer = 100;
 
         private static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
 
@@ -80,8 +79,11 @@ namespace RT_Control
             LogMessage("Starting tasks...");
 
             _ = Task.Run(Responder_Runner);
+            await Task.Delay(5000);
             _ = Task.Run(Commit_Runner);
+            await Task.Delay(5000);
             _ = Task.Run(Skin_Runner);
+            await Task.Delay(5000);
             _ = Task.Run(Update_Runner);
 
             LogMessage("All done!");
@@ -96,14 +98,41 @@ namespace RT_Control
                 try
                 {
                     await ResponderUpdate();
+                }
+                catch (Exception ex)
+                {
+                    LogMessage($"Error - Responder_Runner_Update: {ex}");
+                    await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Error - Responder_Runner_Update: {ex}");
+                }
+                await Task.Delay(1000);
+                try
+                {
                     await SendUpdateDateMessage();
+                }
+                catch (Exception ex)
+                {
+                    LogMessage($"Error - Responder_Runner_DateMsg: {ex}");
+                    await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Error - Responder_Runner_DateMsg: {ex}");
+                }
+                await Task.Delay(1000);
+                try
+                {
                     await Initialize_Channels();
+                }
+                catch (Exception ex)
+                {
+                    LogMessage($"Error - Responder_Runner_InitChannels: {ex}");
+                    await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Error - Responder_Runner_InitChannels: {ex}");
+                }
+                await Task.Delay(1000);
+                try
+                {
                     await AppLogs();
                 }
                 catch (Exception ex)
                 {
-                    LogMessage($"Error - Responder_Runner: {ex}");
-                    await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Error - Responder_Runner: {ex}");
+                    LogMessage($"Error - Responder_Runner_Logs: {ex}");
+                    await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Error - Responder_Runner_Logs: {ex}");
                 }
                 await Task.Delay(TimeSpan.FromHours(1));
             }
@@ -134,15 +163,15 @@ namespace RT_Control
                 {
                     await CheckForNewSkins();
                 }
-                catch (TaskCanceledException)
+                catch (TaskCanceledException ex)
                 {
-                    LogMessage("Information - Skin_Runner: Task Timeout.");
-                    await webhookLogs.SendMessageAsync("Information - Skin_Runner: Task Timeout. (90 Second passed)");
+                    LogMessage($"Information - Skin_Runner: Task Timeout. {ex}");
+                    await webhookLogs.SendMessageAsync($"Information - Skin_Runner: Task Timeout. {ex}");
                 }
-                catch (WebException)
+                catch (WebException ex)
                 {
-                    LogMessage("Error - Skin_Runner: Webrequest error.");
-                    await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Error - Skin_Runner: Webrequest error.");
+                    LogMessage($"Error - Skin_Runner: Webrequest error. {ex}");
+                    await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Error - Skin_Runner: Webrequest error. {ex}");
                 }
                 catch (Exception ex)
                 {
@@ -186,21 +215,18 @@ namespace RT_Control
 
         private static async Task Initialize_Channels()
         {
+            if (_client.ConnectionState != ConnectionState.Connected)
+            {
+                await Task.Delay(1000);
+            }
+
             var guildlist = _client.Guilds;
             foreach (var CurrentGuild in guildlist)
             {
-                //if (CurrentGuild.Id == forbiddenServer)
-                //{
-                //    LogMessage($"Banned guild: {CurrentGuild.Id}");
-                //    await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Banned guild: {CurrentGuild.Id}");
-                //    await CurrentGuild.LeaveAsync();
-                //    continue;
-                //}
-
                 string categoryName = "rust-güncelleme┃🔔";
                 string[] channelNames = { "güncelleme-notları┃📋", "güncelleme-tarihi┃📅", "güncelleme-takipçisi┃💻", "haftalık-mağaza┃🛒", "commits┃📝" };
 
-                if (!CheckBotPerms(CurrentGuild)) await NoPermsSendMessage(CurrentGuild);
+                if (!CheckBotPerms(CurrentGuild)) { await NoPermsSendMessage(CurrentGuild); continue; }
 
                 var categoryCheck = CurrentGuild.CategoryChannels.FirstOrDefault(c => c.Name == categoryName);
                 ICategoryChannel categoryCurrent;
@@ -223,18 +249,13 @@ namespace RT_Control
                     var channelCheck = CurrentGuild.TextChannels.FirstOrDefault(c => c.Name == channelName && c.CategoryId == categoryCurrent.Id);
                     if (channelCheck != null)
                     {
-                        if (!CheckChannelPerms(channelCheck))
-                        {
-                            LogMessage($"Kanal yetkileri yeniden ayarlanıyor. - {channelCheck.Name} | {CurrentGuild.Name}");
-                            await webhookLogs.SendMessageAsync($"Kanal yetkileri yeniden ayarlanıyor. - {channelCheck.Name} | {CurrentGuild.Name}");
-                            var botUser = _client.CurrentUser;
-                            var overwritePermissions = new OverwritePermissions(sendMessages: PermValue.Allow, viewChannel: PermValue.Allow, manageMessages: PermValue.Allow, readMessageHistory: PermValue.Allow, attachFiles: PermValue.Allow, embedLinks: PermValue.Allow, manageChannel: PermValue.Allow, manageRoles: PermValue.Allow, mentionEveryone: PermValue.Allow);
-                            await channelCheck.AddPermissionOverwriteAsync(botUser, overwritePermissions);
-                        }
-
                         LogMessage($"Channel already created: {channelCheck.Id}");
+
+                        if (!CheckChannelPerms(channelCheck)) await NoPermsSendMessage(CurrentGuild);
+
                         switch (i)
                         {
+
                             case 0:
                                 updateNotesChannel_Local_IDS.Add(channelCheck.Id);
                                 break;
@@ -264,27 +285,33 @@ namespace RT_Control
                         LogMessage($"Kanal yetkileri ayarlanıyor. - {newChannel.Name} | {CurrentGuild.Name}");
                         await webhookLogs.SendMessageAsync($"Kanal yetkileri ayarlanıyor. - {newChannel.Name} | {CurrentGuild.Name}");
 
+
                         try
                         {
                             var botUser = _client.CurrentUser;
-                            var overwritePermissions = new OverwritePermissions(sendMessages: PermValue.Allow, viewChannel: PermValue.Allow, manageMessages: PermValue.Allow, readMessageHistory: PermValue.Allow, attachFiles: PermValue.Allow, embedLinks: PermValue.Allow, manageChannel: PermValue.Allow, manageRoles: PermValue.Allow, mentionEveryone: PermValue.Allow);
+                            var overwritePermissions = new OverwritePermissions(
+                            attachFiles: PermValue.Allow, embedLinks: PermValue.Allow, manageChannel: PermValue.Allow, manageRoles: PermValue.Allow, manageWebhooks: PermValue.Allow,
+                            mentionEveryone: PermValue.Allow, readMessageHistory: PermValue.Allow, sendMessages: PermValue.Allow, viewChannel: PermValue.Allow, useApplicationCommands: PermValue.Allow);
                             await newChannel.AddPermissionOverwriteAsync(botUser, overwritePermissions);
                         }
-                        catch (Exception)
+                        catch (Exception ex)
                         {
-                            LogMessage($"Kanal yetkisi ayarlanamadı.  - {newChannel.Name} | {CurrentGuild.Name}");
-                            await webhookLogs.SendMessageAsync($"Kanal yetkisi ayarlanamadı.  - {newChannel.Name} | {CurrentGuild.Name}");
+                            LogMessage($"Kanal yetkisi ayarlanamadı.  - {newChannel.Name} | {CurrentGuild.Name} | {ex}");
+                            await webhookLogs.SendMessageAsync($"Kanal yetkisi ayarlanamadı.  - {newChannel.Name} | {CurrentGuild.Name} | {ex}");
                         }
+
 
                         switch (i)
                         {
+
                             case 0:
                                 updateNotesChannel_Local_IDS.Add(newChannel.Id);
                                 try
                                 {
-                                    await newChannel.SendMessageAsync("**Güncelleme Notları** kanalı başarıyla oluşturuldu.\nGüncelleme notları bu kanalda paylaşılacaktır.\n **\r\nGüncelleme Takipçisi\r\n bu kanala \r\nRust Güncelleme Notları #güncelleme-notları┃📋 ekledi.** Mesajını görmezseniz yetersiz yetki mevcuttur.");
+                                    await newChannel.SendMessageAsync("**Güncelleme Notları** kanalı başarıyla oluşturuldu.\nGüncelleme notları bu kanalda paylaşılacaktır.");
                                     var announcementChannel = _client.GetChannel(1223058873573969920) as SocketNewsChannel;
                                     var targetChannel = _client.GetChannel(newChannel.Id) as SocketTextChannel;
+                                    await Task.Delay(1000);
                                     var followChannel = await announcementChannel.FollowAnnouncementChannelAsync(targetChannel);
                                 }
                                 catch (Exception)
@@ -317,62 +344,11 @@ namespace RT_Control
                     }
                 }
 
-                if (CurrentGuild.Id != 1223037877911556107)
-                {
-                    if (IsChannelOrderCorrect(CurrentGuild, categoryCurrent.Id, updateNotesChannel_Local_IDS, updateDateChannel_Local_IDS, updateTrackerChannel_Local_IDS, storeCheckerChannel_Local_IDS, commitFollowerChannel_Local_IDS))
-                    {
-                        LogMessage("Channel order is correct.");
-                    }
-                    else
-                    {
-                        LogMessage("Channel order is incorrect, setting the correct order.");
-                        await SetChannelOrder(CurrentGuild, categoryCurrent.Id, updateNotesChannel_Local_IDS, updateDateChannel_Local_IDS, updateTrackerChannel_Local_IDS, storeCheckerChannel_Local_IDS, commitFollowerChannel_Local_IDS);
-                    }
-                }
-
                 updateNotesChannel_IDS[CurrentGuild.Id] = updateNotesChannel_Local_IDS;
                 updateDateChannel_IDS[CurrentGuild.Id] = updateDateChannel_Local_IDS;
                 updateTrackerChannel_IDS[CurrentGuild.Id] = updateTrackerChannel_Local_IDS;
                 storeCheckerChannel_IDS[CurrentGuild.Id] = storeCheckerChannel_Local_IDS;
                 commitFollowerChannel_IDS[CurrentGuild.Id] = commitFollowerChannel_Local_IDS;
-            }
-        }
-
-        private static bool IsChannelOrderCorrect(SocketGuild guild, ulong categoryId, params List<ulong>[] channelIdsLists)
-        {
-            int position = 0;
-            foreach (var channelIds in channelIdsLists)
-            {
-                foreach (var channelId in channelIds)
-                {
-                    var channel = guild.GetTextChannel(channelId);
-                    if (channel != null && channel.CategoryId == categoryId)
-                    {
-                        if (channel.Position != position)
-                        {
-                            return false;
-                        }
-                        position++;
-                    }
-                }
-            }
-            return true;
-        }
-
-        private static async Task SetChannelOrder(SocketGuild guild, ulong categoryId, params List<ulong>[] channelIdsLists)
-        {
-            int position = 0;
-            foreach (var channelIds in channelIdsLists)
-            {
-                foreach (var channelId in channelIds)
-                {
-                    var channel = guild.GetTextChannel(channelId);
-                    if (channel != null && channel.CategoryId == categoryId)
-                    {
-                        await channel.ModifyAsync(prop => prop.Position = position);
-                        position++;
-                    }
-                }
             }
         }
 
@@ -515,8 +491,7 @@ namespace RT_Control
                         {
                             var channel = guild.GetTextChannel(channelId);
                             if (channel == null) continue;
-                            if (!CheckBotPerms(guild)) await NoPermsSendMessage(guild);
-                            if (!CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
+                            if (!CheckBotPerms(guild) || !CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
                             else await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
                         }
                     }
@@ -541,8 +516,7 @@ namespace RT_Control
                                 if (channel == null) continue;
                                 using (var memoryStream = new MemoryStream(imageData))
                                 {
-                                    if (!CheckBotPerms(guild)) await NoPermsSendMessage(guild);
-                                    if (!CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
+                                    if (!CheckBotPerms(guild) || !CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
                                     else await channel.SendFileAsync(memoryStream, "skinimage.png");
                                 }
                             }
@@ -675,7 +649,6 @@ namespace RT_Control
                 using (StreamReader fileReader = new StreamReader(outputFileName))
                 {
                     string fileContent = await fileReader.ReadToEndAsync();
-
                     int buildIdIndex = fileContent.IndexOf("\"buildid\"") + 12;
                     return fileContent.Substring(buildIdIndex, 8);
                 }
@@ -688,18 +661,14 @@ namespace RT_Control
             {
                 if (server) EnSonSunucu = CurrentVersion;
                 else EnSonOyun = CurrentVersion;
-
                 LogMessage($"[UpdateChecker] {message} [{CurrentVersion}]");
-
                 string changenumber_t = MainVersion + " --> " + CurrentVersion;
-
                 EmbedBuilder embedBuilder = new EmbedBuilder();
                 embedBuilder.WithTitle(message);
                 embedBuilder.WithDescription(description);
                 embedBuilder.WithColor(Discord.Color.Blue);
                 embedBuilder.WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj");
                 embedBuilder.AddField("Sürüm Numarası Değişimi:", changenumber_t, true); ;
-
                 var guildlist = updateTrackerChannel_IDS.Keys;
                 foreach (var guildId in guildlist)
                 {
@@ -709,12 +678,9 @@ namespace RT_Control
                     foreach (var channelId in channelids)
                     {
                         var channel = guild.GetTextChannel(channelId);
-                        if (channel != null)
-                        {
-                            if (!CheckBotPerms(guild)) await NoPermsSendMessage(guild);
-                            if (!CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
-                            else await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
-                        }
+                        if (channel == null) continue;
+                        if (!CheckBotPerms(guild) || !CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
+                        else await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
                     }
                 }
             }
@@ -724,57 +690,47 @@ namespace RT_Control
         {
             var response = await httpClient.GetStringAsync(commitApiUrl);
             var commitData = JsonConvert.DeserializeObject<CommitData>(response);
-            if (commitData?.Results != null)
+            if (commitData?.Results == null) { LogMessage("[CommitTracker] Yeni veri alınamadı."); return; }
+
+            var newCommits = commitData.Results.Select(commit => commit.message).ToList();
+            if (newCommits != null && newCommits.Any() && newCommits.Count > 0)
             {
-                var newCommits = commitData.Results.Select(commit => commit.message).ToList();
-                if (newCommits != null && newCommits.Any() && newCommits.Count > 0)
+                if (storedCommits.Count == 0)
                 {
-                    if (storedCommits.Count == 0)
+                    storedCommits.UnionWith(newCommits);
+                }
+                else
+                {
+                    var differences = commitData.Results.Where(commit => newCommits.Contains(commit.message) && !storedCommits.Contains(commit.message)).ToList();
+                    if (!differences.Any()) { LogMessage("[CommitTracker] Veri farkı yok."); return; }
+                    foreach (var commit in differences)
                     {
-                        storedCommits.UnionWith(newCommits);
-                    }
-                    else
-                    {
-                        var differences = commitData.Results.Where(commit => newCommits.Contains(commit.message) && !storedCommits.Contains(commit.message)).ToList();
-                        if (differences.Any())
+                        LogMessage($"[CommitTracker] Yeni Commit: {commit.id}");
+                        var commitlink = "https://commits.facepunch.com/" + commit.id;
+                        EmbedBuilder newEmbedBuilder = new EmbedBuilder();
+                        newEmbedBuilder.WithAuthor(commit.user.name, commit.user.avatar);
+                        newEmbedBuilder.WithTitle(commit.branch);
+                        newEmbedBuilder.WithDescription(commit.message);
+                        newEmbedBuilder.WithUrl(commitlink);
+                        newEmbedBuilder.WithColor(Discord.Color.Blue);
+                        newEmbedBuilder.WithFooter($"ID: {commit.id} | Change: {commit.changeset} | {DateTime.Now.ToString()}");
+                        var guildlist = commitFollowerChannel_IDS.Keys;
+                        foreach (var guildId in guildlist)
                         {
-                            foreach (var commit in differences)
+                            var guild = _client.GetGuild(guildId);
+                            if (guild == null) continue;
+                            var channelids = commitFollowerChannel_IDS[guildId].ToList();
+                            foreach (var channelId in channelids)
                             {
-                                LogMessage($"[CommitTracker] Yeni Commit: {commit.id}");
-                                var commitlink = "https://commits.facepunch.com/" + commit.id;
-                                EmbedBuilder newEmbedBuilder = new EmbedBuilder();
-                                newEmbedBuilder.WithAuthor(commit.user.name, commit.user.avatar);
-                                newEmbedBuilder.WithTitle(commit.branch);
-                                newEmbedBuilder.WithDescription(commit.message);
-                                newEmbedBuilder.WithUrl(commitlink);
-                                newEmbedBuilder.WithColor(Discord.Color.Blue);
-                                newEmbedBuilder.WithFooter($"ID: {commit.id} | Change: {commit.changeset} | {DateTime.Now.ToString()}");
-                                var guildlist = commitFollowerChannel_IDS.Keys;
-                                foreach (var guildId in guildlist)
-                                {
-                                    var guild = _client.GetGuild(guildId);
-                                    if (guild == null) continue;
-                                    var channelids = commitFollowerChannel_IDS[guildId].ToList();
-                                    foreach (var channelId in channelids)
-                                    {
-                                        var channel = guild.GetTextChannel(channelId);
-                                        if (channel != null)
-                                        {
-                                            if (!CheckBotPerms(guild)) await NoPermsSendMessage(guild);
-                                            if (!CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
-                                            else await channel.SendMessageAsync("", false, newEmbedBuilder.Build());
-                                        }
-                                    }
-                                }
+                                var channel = guild.GetTextChannel(channelId);
+                                if (channel == null) continue;
+                                if (!CheckBotPerms(guild) || !CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
+                                else await channel.SendMessageAsync("", false, newEmbedBuilder.Build());
                             }
                         }
-                        storedCommits.UnionWith(newCommits);
                     }
+                    storedCommits.UnionWith(newCommits);
                 }
-            }
-            else
-            {
-                LogMessage("[CommitTracker] Yeni veri alınamadı.");
             }
             LogMessage($"[CommitTracker] Depolanan: {storedCommits.Count}");
         }
@@ -821,7 +777,6 @@ namespace RT_Control
             embedBuilder.AddField("Sonraki Güncellemeye Kalan Zaman:", $"<t:{_nextUpdateTimestamp}:R>", false);
             embedBuilder.WithColor(Discord.Color.Blue);
             embedBuilder.WithFooter($"En Son Tarih Kontrolü: {DateTime.Now.ToString()}");
-
             var guildlist = updateDateChannel_IDS.Keys;
             foreach (var guildId in guildlist)
             {
@@ -831,17 +786,14 @@ namespace RT_Control
                 foreach (var channelId in channelids)
                 {
                     var channel = guild.GetTextChannel(channelId);
-                    if (channel != null)
+                    if (channel == null) continue;
+                    if (!CheckBotPerms(guild) || !CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
+                    else
                     {
-                        if (!CheckBotPerms(guild)) await NoPermsSendMessage(guild);
-                        if (!CheckChannelPerms(channel)) await NoPermsSendMessage(guild);
-                        else
-                        {
-                            var messages = await channel.GetMessagesAsync(limit: 1).FlattenAsync();
-                            var lastMessage = messages.FirstOrDefault() as IUserMessage;
-                            if (lastMessage != null && lastMessage.Author.Id == _client.CurrentUser.Id) await lastMessage.ModifyAsync(msg => msg.Embed = embedBuilder.Build());
-                            else await channel.SendMessageAsync("", false, embedBuilder.Build());
-                        }
+                        var messages = await channel.GetMessagesAsync(limit: 1).FlattenAsync();
+                        var lastMessage = messages.FirstOrDefault() as IUserMessage;
+                        if (lastMessage != null && lastMessage.Author.Id == _client.CurrentUser.Id) await lastMessage.ModifyAsync(msg => msg.Embed = embedBuilder.Build());
+                        else await channel.SendMessageAsync("", false, embedBuilder.Build());
                     }
                 }
             }
@@ -849,27 +801,24 @@ namespace RT_Control
 
         private static Task MessageReceived(SocketMessage message)
         {
-            IUser user = message.Author;
-            string userTag = $"{user.Mention}";
-
             if (message.Channel.Id == _SohbetKanalID)
             {
-                if (message.Author.Id != _client.CurrentUser.Id)
+                IUser user = message.Author;
+                string userTag = $"{user.Mention}";
+                if (message.Author.Id == _client.CurrentUser.Id) return Task.CompletedTask;
+                if (UpdateKeys.Any(keyword => message.Content.ToLower().Contains(keyword)))
                 {
-                    if (UpdateKeys.Any(keyword => message.Content.ToLower().Contains(keyword)))
-                    {
-                        LogMessage("[Responder] Güncelleme sorusu cevaplanıyor...");
-                        EmbedBuilder embedBuilder = new EmbedBuilder();
-                        embedBuilder.WithTitle(":information_source:  **Güncelleme Bilgisi**  :information_source:");
-                        embedBuilder.WithDescription("Her ayın ilk perşembesi (Yaz Dönemi 21:00 - Kış Dönemi 22:00) gelen güncelleme ile tüm sunuculara **Zorunlu Harita Sıfırlaması** atılır.\n**BP Sıfırlaması**(Blueprint/Öğrenilen Eşyalar) ise sunucu sahibinin isteğine bağlıdır.");
-                        embedBuilder.WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj");
-                        embedBuilder.WithFooter(DateTime.Now.ToString(), "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no");
-                        embedBuilder.AddField("Sonraki Güncelleme Tarihi:", $"<t:{_nextUpdateTimestamp}:F>", false);
-                        embedBuilder.AddField("Sonraki Güncellemeye Kalan Zaman:", $"<t:{_nextUpdateTimestamp}:R>", false);
-                        embedBuilder.AddField("Soran Kullanıcı", userTag, false);
-                        embedBuilder.WithColor(Discord.Color.Blue);
-                        return message.Channel.SendMessageAsync("", false, embedBuilder.Build());
-                    }
+                    LogMessage("[Responder] Güncelleme sorusu cevaplanıyor...");
+                    EmbedBuilder embedBuilder = new EmbedBuilder();
+                    embedBuilder.WithTitle(":information_source:  **Güncelleme Bilgisi**  :information_source:");
+                    embedBuilder.WithDescription("Her ayın ilk perşembesi (Yaz Dönemi 21:00 - Kış Dönemi 22:00) gelen güncelleme ile tüm sunuculara **Zorunlu Harita Sıfırlaması** atılır.\n**BP Sıfırlaması**(Blueprint/Öğrenilen Eşyalar) ise sunucu sahibinin isteğine bağlıdır.");
+                    embedBuilder.WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj");
+                    embedBuilder.WithFooter(DateTime.Now.ToString(), "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no");
+                    embedBuilder.AddField("Sonraki Güncelleme Tarihi:", $"<t:{_nextUpdateTimestamp}:F>", false);
+                    embedBuilder.AddField("Sonraki Güncellemeye Kalan Zaman:", $"<t:{_nextUpdateTimestamp}:R>", false);
+                    embedBuilder.AddField("Soran Kullanıcı", userTag, false);
+                    embedBuilder.WithColor(Discord.Color.Blue);
+                    return message.Channel.SendMessageAsync("", false, embedBuilder.Build());
                 }
             }
             return Task.CompletedTask;
@@ -886,7 +835,6 @@ namespace RT_Control
         {
             LogMessage($"Guild leaved: {guild}");
             await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Guild leaved: {guild}");
-            await Initialize_Channels();
         }
 
         private Task BotReady()
@@ -917,15 +865,18 @@ namespace RT_Control
         {
             LogMessage($"Yetersiz yetki. | Guild: {CurrentGuild.Name} - Id: {CurrentGuild.Id}");
             await webhookLogs.SendMessageAsync($"Yetersiz yetki. | Guild: {CurrentGuild.Name} - Id: {CurrentGuild.Id}");
+
+            await Task.Delay(1000);
+
             var user = _client.GetUserAsync(CurrentGuild.OwnerId).Result;
-            await UserExtensions.SendMessageAsync(user, $"Yetersiz yetki. | Guild: {CurrentGuild}\nBot gerekli izinlere sahip değil.");
+            if (user != null) await UserExtensions.SendMessageAsync(user, $"Yetersiz yetki. | Guild: {CurrentGuild}\nBot gerekli izinlere sahip olmadığı için işlevlerini tam manasıyla yerine getiremiyor.");
         }
 
         private static bool CheckBotPerms(SocketGuild guild)
         {
             var requiredPermissions = new[] {
-                GuildPermission.AttachFiles, GuildPermission.ChangeNickname, GuildPermission.EmbedLinks, GuildPermission.ManageChannels,
-                GuildPermission.ManageMessages, GuildPermission.ReadMessageHistory,GuildPermission.ViewChannel,GuildPermission.SendMessages};
+               GuildPermission.AttachFiles, GuildPermission.EmbedLinks, GuildPermission.ManageChannels,GuildPermission.ManageRoles,GuildPermission.ManageWebhooks,
+               GuildPermission.MentionEveryone, GuildPermission.ReadMessageHistory, GuildPermission.SendMessages,GuildPermission.ViewChannel,GuildPermission.UseApplicationCommands};
             var botUser = guild.CurrentUser;
             return requiredPermissions.All(permission => botUser.GuildPermissions.Has(permission));
         }
@@ -933,8 +884,8 @@ namespace RT_Control
         private static bool CheckChannelPerms(SocketTextChannel channel)
         {
             var requiredPermissions = new[] {
-                ChannelPermission.AttachFiles, ChannelPermission.EmbedLinks, ChannelPermission.ManageChannels, ChannelPermission.ManageMessages,
-                ChannelPermission.ReadMessageHistory, ChannelPermission.ViewChannel,ChannelPermission.SendMessages };
+                ChannelPermission.AttachFiles, ChannelPermission.EmbedLinks, ChannelPermission.ManageChannels,ChannelPermission.ManageRoles,ChannelPermission.ManageWebhooks,
+                ChannelPermission.MentionEveryone, ChannelPermission.ReadMessageHistory, ChannelPermission.SendMessages,ChannelPermission.ViewChannel,ChannelPermission.UseApplicationCommands};
             var permissions = channel.Guild.CurrentUser.GetPermissions(channel);
             return requiredPermissions.All(permission => permissions.Has(permission));
         }
