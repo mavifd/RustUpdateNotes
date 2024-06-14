@@ -2,5 +2,6 @@
 @NoPromptForPassword 1
 login anonymous
 app_info_update 1
+app_info_request 258550
 app_info_print 258550
 quit

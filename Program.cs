@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -38,8 +39,15 @@ namespace RT_Control
         private static Dictionary<ulong, List<ulong>> storeCheckerChannel_IDS = new Dictionary<ulong, List<ulong>>();
         private static Dictionary<ulong, List<ulong>> commitFollowerChannel_IDS = new Dictionary<ulong, List<ulong>>();
 
-        private static string EnSonOyun = "";
-        private static string EnSonSunucu = "";
+        private static string Main_Public = "";
+
+        private static string Server_Public = "";
+        private static string Server_Staging = "";
+        private static string Server_Aux02 = "";
+
+        private static string Staging_Public = "";
+        private static string Staging_Main = "";
+        private static string Staging_Aux02 = "";
 
         private static long _nextUpdateTimestamp = 0;
         private static bool _botReady = false;
@@ -48,8 +56,6 @@ namespace RT_Control
         private static ulong _PingMavi = 170569747497222145;
 
         private static List<string> UpdateKeys = new List<string> { "wipe", "güncelleme", "global", "update" };
-
-        private const long forbiddenServer = 100;
 
         private static void Main(string[] args) => new Program().MainAsync().GetAwaiter().GetResult();
 
@@ -88,7 +94,7 @@ namespace RT_Control
 
             LogMessage("All done!");
 
-            await Task.Delay(-1);
+            await Task.Delay(Timeout.Infinite);
         }
 
         private static async Task InitChannel_Runner()
@@ -97,6 +103,8 @@ namespace RT_Control
             {
                 try
                 {
+                    LogMessage($"InitChannel_Runner... {DateTime.Now}");
+                    await webhookLogs.SendMessageAsync($"InitChannel_Runner... {DateTime.Now}");
                     await Initialize_Channels();
                 }
                 catch (Exception ex)
@@ -114,7 +122,9 @@ namespace RT_Control
             {
                 try
                 {
-                    await AppLogs();
+                    var botUser = _client.CurrentUser;
+                    LogMessage($"AppLogs_Runner... {DateTime.Now} - Server Count: {botUser.MutualGuilds.Count}");
+                    await webhookLogs.SendMessageAsync($"AppLogs_Runner... {DateTime.Now} - Server Count: {botUser.MutualGuilds.Count}");
                 }
                 catch (Exception ex)
                 {
@@ -131,6 +141,8 @@ namespace RT_Control
             {
                 try
                 {
+                    LogMessage($"UpdateMessage_Runner... {DateTime.Now}");
+                    await webhookLogs.SendMessageAsync($"UpdateMessage_Runner... {DateTime.Now}");
                     await SendUpdateDateMessage();
                 }
                 catch (Exception ex)
@@ -148,6 +160,8 @@ namespace RT_Control
             {
                 try
                 {
+                    LogMessage($"Responder_Runner... {DateTime.Now}");
+                    await webhookLogs.SendMessageAsync($"Responder_Runner... {DateTime.Now}");
                     await ResponderUpdate();
                 }
                 catch (Exception ex)
@@ -220,14 +234,32 @@ namespace RT_Control
             {
                 try
                 {
-                    string mevcutOyun = await GetRustVersionAsync("rustapp.txt");
-                    string mevcutSunucu = await GetRustVersionAsync("rustserver.txt");
+                    string Local_Main_Public = "1";
+                    string Local_Main_NULL1 = "1";
+                    string Local_Main_NULL2 = "1";
 
-                    LogMessage($"[UpdateChecker] Oyun Mevcut Sürüm: {mevcutOyun}");
-                    LogMessage($"[UpdateChecker] Sunucu Mevcut Sürüm: {mevcutSunucu}");
+                    string Local_Server_Public = "1";
+                    string Local_Server_Staging = "1";
+                    string Local_Server_Aux02 = "1";
 
-                    await CheckAndUpdateVersion(EnSonOyun, mevcutOyun, ":radioactive: **Oyuncular için yeni bir Güncelleme geldi!** :radioactive:", "Güncellemeyi görmüyorsanız, Steaminizi yeniden başlatın.", false);
-                    await CheckAndUpdateVersion(EnSonSunucu, mevcutSunucu, ":radioactive: **Sunucular için yeni bir Güncelleme geldi!** :radioactive:", "Sunucu sahipleri, sunucularını güncelleyebilir.", true);
+                    string Local_Staging_Public = "1";
+                    string Local_Staging_Main = "1";
+                    string Local_Staging_Aux02 = "1";
+
+                    GetRustVersionAsync("rustapp.txt", ref Local_Main_Public, ref Local_Main_NULL1, ref Local_Main_NULL2);
+                    LogMessage($"[UpdateChecker] Local_Main_Public: {Local_Main_Public}");
+
+                    GetRustVersionAsync("rustserver.txt", ref Local_Server_Public, ref Local_Server_Staging, ref Local_Server_Aux02);
+                    LogMessage($"[UpdateChecker] Local_Server_Public: {Local_Server_Public}");
+                    LogMessage($"[UpdateChecker] Local_Server_Staging: {Local_Server_Staging}");
+                    LogMessage($"[UpdateChecker] Local_Server_Aux02: {Local_Server_Aux02}");
+
+                    GetRustVersionAsync("ruststaging.txt", ref Local_Staging_Public, ref Local_Staging_Main, ref Local_Staging_Aux02);
+                    LogMessage($"[UpdateChecker] Local_Staging_Public: {Local_Staging_Public}");
+                    LogMessage($"[UpdateChecker] Local_Staging_Main: {Local_Staging_Main}");
+                    LogMessage($"[UpdateChecker] Local_Staging_Aux02: {Local_Staging_Aux02}");
+
+                    await CheckAndUpdateVersion(Local_Main_Public, Local_Server_Public, Local_Server_Staging, Local_Server_Aux02, Local_Staging_Public, Local_Staging_Main, Local_Staging_Aux02);
                 }
                 catch (Exception ex)
                 {
@@ -238,11 +270,6 @@ namespace RT_Control
             }
         }
 
-        private static async Task AppLogs()
-        {
-            var botUser = _client.CurrentUser;
-            await webhookLogs.SendMessageAsync($"Server Count: {botUser.MutualGuilds.Count}");
-        }
 
         private static async Task Initialize_Channels()
         {
@@ -257,7 +284,7 @@ namespace RT_Control
                 string categoryName = "rust-güncelleme┃🔔";
                 string[] channelNames = { "güncelleme-notları┃📋", "güncelleme-tarihi┃📅", "güncelleme-takipçisi┃💻", "haftalık-mağaza┃🛒", "commits┃📝" };
 
-                if (!await CheckBotPerms(CurrentGuild)) { await NoPermsSendMessage(CurrentGuild); continue; }
+                if (!await CheckBotPerms(CurrentGuild)) { await NoPermsSendMessage(CurrentGuild, "(Genel Yetki Yetersizliği)"); continue; }
 
                 var categoryCheck = CurrentGuild.CategoryChannels.FirstOrDefault(c => c.Name == categoryName);
                 ICategoryChannel categoryCurrent;
@@ -284,7 +311,6 @@ namespace RT_Control
 
                         switch (i)
                         {
-
                             case 0:
                                 updateNotesChannel_Local_IDS.Add(channelCheck.Id);
                                 break;
@@ -328,10 +354,8 @@ namespace RT_Control
                             await webhookLogs.SendMessageAsync($"Kanal yetkisi ayarlanamadı.  - {newChannel.Name} | {CurrentGuild.Name} | {ex}");
                         }
 
-
                         switch (i)
                         {
-
                             case 0:
                                 updateNotesChannel_Local_IDS.Add(newChannel.Id);
                                 try
@@ -410,6 +434,7 @@ namespace RT_Control
                 Console.ResetColor();
                 File.WriteAllText("scripts\\rustapp.txt", Properties.Resources.rustapp);
                 File.WriteAllText("scripts\\rustserver.txt", Properties.Resources.rustserver);
+                File.WriteAllText("scripts\\ruststaging.txt", Properties.Resources.ruststaging);
             }
             else
             {
@@ -421,6 +446,7 @@ namespace RT_Control
                     Console.ResetColor();
                     File.WriteAllText("scripts\\rustapp.txt", Properties.Resources.rustapp);
                     File.WriteAllText("scripts\\rustserver.txt", Properties.Resources.rustserver);
+                    File.WriteAllText("scripts\\ruststaging.txt", Properties.Resources.ruststaging);
                 }
                 else
                 {
@@ -440,13 +466,22 @@ namespace RT_Control
 
             while (true)
             {
-                EnSonOyun = await GetRustVersionAsync("rustapp.txt");
-                LogMessage($"[UpdateChecker] Oyun Başlangıç Değeri: {EnSonOyun}");
+                GetRustVersionAsync_Starting("rustapp.txt");
+                LogMessage($"[UpdateChecker] Main_Public: {Main_Public}");
 
-                EnSonSunucu = await GetRustVersionAsync("rustserver.txt");
-                LogMessage($"[UpdateChecker] Sunucu Başlangıç Değeri: {EnSonSunucu}");
+                GetRustVersionAsync_Starting("rustserver.txt");
+                LogMessage($"[UpdateChecker] Server_Public: {Server_Public}");
+                LogMessage($"[UpdateChecker] Server_Staging: {Server_Staging}");
+                LogMessage($"[UpdateChecker] Server_Aux02: {Server_Aux02}");
 
-                if (IsValidVersion(EnSonOyun) && IsValidVersion(EnSonSunucu))
+                GetRustVersionAsync_Starting("ruststaging.txt");
+                LogMessage($"[UpdateChecker] Staging_Public: {Staging_Public}");
+                LogMessage($"[UpdateChecker] Staging_Main: {Staging_Main}");
+                LogMessage($"[UpdateChecker] Staging_Aux02: {Staging_Aux02}");
+
+                if (IsValidVersion(Main_Public) &&
+                    IsValidVersion(Server_Public) && IsValidVersion(Server_Staging) && IsValidVersion(Server_Aux02) &&
+                    IsValidVersion(Staging_Public) && IsValidVersion(Staging_Main) && IsValidVersion(Staging_Aux02))
                 {
                     break;
                 }
@@ -519,7 +554,7 @@ namespace RT_Control
                         {
                             var channel = guild.GetTextChannel(channelId);
                             if (channel == null) continue;
-                            if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { await NoPermsSendMessage(guild); continue; };
+                            if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { await NoPermsSendMessage(guild, "(Haftalık Mağaza Kanalı)"); continue; };
                             await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
                         }
                     }
@@ -544,7 +579,7 @@ namespace RT_Control
                                 if (channel == null) continue;
                                 using (var memoryStream = new MemoryStream(imageData))
                                 {
-                                    if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { await NoPermsSendMessage(guild); continue; };
+                                    if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { await NoPermsSendMessage(guild, "(Haftalık Mağaza Kanalı - Resim)"); continue; };
                                     await channel.SendFileAsync(memoryStream, "skinimage.png");
                                 }
                             }
@@ -630,7 +665,7 @@ namespace RT_Control
         private static List<SkinItem> ParseSkins(string html)
         {
             List<SkinItem> skinItems = new List<SkinItem>();
-            HtmlDocument doc = new HtmlDocument();
+            HtmlAgilityPack.HtmlDocument doc = new HtmlAgilityPack.HtmlDocument();
             doc.LoadHtml(html);
             var storeItems = doc.DocumentNode.SelectNodes("//div[contains(@class, 'item_def_grid_item')]");
             if (storeItems == null) return null;
@@ -653,7 +688,7 @@ namespace RT_Control
             return skinItems;
         }
 
-        private static async Task<string> GetRustVersionAsync(string scriptFileName)
+        private static void GetRustVersionAsync(string scriptFileName, ref string OptArg1, ref string OptArg2, ref string OptArg3)
         {
             string outputFileName = $"out/{Path.GetFileNameWithoutExtension(scriptFileName)}out.txt";
             string scriptpath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "scripts", scriptFileName);
@@ -674,42 +709,190 @@ namespace RT_Control
                 process.Start();
                 process.WaitForExit();
 
-                using (StreamReader fileReader = new StreamReader(outputFileName))
+                if (scriptFileName == "rustapp.txt")
                 {
-                    string fileContent = await fileReader.ReadToEndAsync();
-                    int buildIdIndex = fileContent.IndexOf("\"buildid\"") + 12;
-                    return fileContent.Substring(buildIdIndex, 8);
+                    OptArg1 = FindVersion(outputFileName, "public");
+                }
+                else if (scriptFileName == "rustserver.txt")
+                {
+                    OptArg1 = FindVersion(outputFileName, "public");
+                    OptArg2 = FindVersion(outputFileName, "staging");
+                    OptArg3 = FindVersion(outputFileName, "aux02");
+                }
+                else if (scriptFileName == "ruststaging.txt")
+                {
+                    OptArg1 = FindVersion(outputFileName, "public");
+                    OptArg2 = FindVersion(outputFileName, "main");
+                    OptArg3 = FindVersion(outputFileName, "aux02");
                 }
             }
         }
 
-        private static async Task CheckAndUpdateVersion(string MainVersion, string CurrentVersion, string message, string description, bool server)
+        private static void GetRustVersionAsync_Starting(string scriptFileName)
         {
-            if (IsValidVersion(CurrentVersion) && CurrentVersion != MainVersion)
+            string outputFileName = $"out/{Path.GetFileNameWithoutExtension(scriptFileName)}out.txt";
+            string scriptpath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "scripts", scriptFileName);
+
+            File.Delete(outputFileName);
+
+            ProcessStartInfo startInfo = new ProcessStartInfo
             {
-                if (server) EnSonSunucu = CurrentVersion;
-                else EnSonOyun = CurrentVersion;
-                LogMessage($"[UpdateChecker] {message} [{CurrentVersion}]");
-                string changenumber_t = MainVersion + " --> " + CurrentVersion;
-                EmbedBuilder embedBuilder = new EmbedBuilder()
-                .WithTitle(message)
-                .WithDescription(description)
-                .WithColor(Discord.Color.Blue)
-                .WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj")
-                .AddField("Sürüm Numarası Değişimi:", changenumber_t, true);
-                var guildlist = updateTrackerChannel_IDS.Keys.ToList();
-                foreach (var guildId in guildlist)
+                FileName = "cmd.exe",
+                Arguments = $"/c C:\\steamcmd\\steamcmd.exe +runscript {scriptpath} > {outputFileName}",
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using (Process process = new Process { StartInfo = startInfo })
+            {
+                process.Start();
+                process.WaitForExit();
+
+                if (scriptFileName == "rustapp.txt")
                 {
-                    var guild = _client.GetGuild(guildId);
-                    if (guild == null) continue;
-                    var channelids = updateTrackerChannel_IDS[guildId].ToList();
-                    foreach (var channelId in channelids)
-                    {
-                        var channel = guild.GetTextChannel(channelId);
-                        if (channel == null) continue;
-                        if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { await NoPermsSendMessage(guild); continue; };
-                        await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
-                    }
+                    Main_Public = FindVersion(outputFileName, "public");
+                }
+                else if (scriptFileName == "rustserver.txt")
+                {
+                    Server_Public = FindVersion(outputFileName, "public");
+                    Server_Staging = FindVersion(outputFileName, "staging");
+                    Server_Aux02 = FindVersion(outputFileName, "aux02");
+                }
+                else if (scriptFileName == "ruststaging.txt")
+                {
+                    Staging_Public = FindVersion(outputFileName, "public");
+                    Staging_Main = FindVersion(outputFileName, "main");
+                    Staging_Aux02 = FindVersion(outputFileName, "aux02");
+                }
+            }
+        }
+
+        private static string FindVersion(string path, string branch)
+        {
+            string fileContent = File.ReadAllText(path);
+
+            int branchesStartIndex = fileContent.IndexOf("\"branches\"");
+            if (branchesStartIndex == -1) { LogMessage("branches cant found."); return null; }
+            int startIndex = fileContent.IndexOf('{', branchesStartIndex);
+            int endIndex = FindClosingBraceIndex(fileContent, startIndex);
+            if (startIndex == -1 || endIndex == -1) { LogMessage("cant parse branches section"); return null; }
+            string branchesSection = fileContent.Substring(startIndex, endIndex - startIndex + 1);
+
+            int aux02StartIndex = branchesSection.IndexOf($"\"{branch}\"");
+            if (aux02StartIndex == -1) { LogMessage("minor branch cant found."); }
+            startIndex = branchesSection.IndexOf('{', aux02StartIndex);
+            endIndex = FindClosingBraceIndex(branchesSection, startIndex);
+            if (startIndex == -1 || endIndex == -1) { LogMessage("cant parse minor branch section"); return null; }
+            string aux02Section = branchesSection.Substring(startIndex, endIndex - startIndex + 1);
+
+            string buildId = GetPropertyValue(aux02Section, "buildid");
+            if (buildId == null) { LogMessage("buildid cant found."); return null; }
+            else return buildId;
+        }
+
+        private static string GetPropertyValue(string text, string propertyName)
+        {
+            string pattern = $"\"{propertyName}\"\\s*\"(.*?)\"";
+            Match match = Regex.Match(text, pattern);
+            if (match.Success) return match.Groups[1].Value;
+            return null;
+        }
+
+        private static int FindClosingBraceIndex(string text, int startIndex)
+        {
+            int braceCount = 0;
+            for (int i = startIndex; i < text.Length; i++)
+            {
+                if (text[i] == '{')
+                {
+                    braceCount++;
+                }
+                else if (text[i] == '}')
+                {
+                    braceCount--;
+                    if (braceCount == 0) return i;
+                }
+            }
+            return -1;
+        }
+
+        private static async Task CheckAndUpdateVersion(string MainL, string ServerPublicL, string ServerStagingL, string ServerAuxL, string StagingPublicL, string StagingMainL, string StagingAuxL)
+        {
+            if (IsValidVersion(MainL) && MainL != Main_Public)
+            {
+                LogMessage($"[UpdateChecker] Main_Public Update found! {Main_Public} -> {MainL}");
+                string Change = Main_Public + " --> " + MainL;
+                await SendUpdateMessage(":radioactive: **Oyuncular için yeni bir Güncelleme geldi!** :radioactive:", "Güncellemeyi görmüyorsanız, steaminizi yeniden başlatmanız gerekiyor.", Change, true);
+                Main_Public = MainL;
+            }
+
+            if (IsValidVersion(ServerPublicL) && ServerPublicL != Server_Public)
+            {
+                LogMessage($"[UpdateChecker] Server_Public Update found! {Server_Public} -> {ServerPublicL}");
+                string Change = Server_Public + " --> " + ServerPublicL;
+                await SendUpdateMessage(":radioactive: **Sunucular için yeni bir Güncelleme geldi!** :radioactive:", "Sunucu sahipleri, sunucularını güncelleyebilirler.", Change, true);
+                Server_Public = ServerPublicL;
+            }
+            if (IsValidVersion(ServerStagingL) && ServerStagingL != Server_Staging)
+            {
+                LogMessage($"[UpdateChecker] Server_Staging Update found! {Server_Staging} -> {ServerStagingL}");
+                string Change = Server_Staging + " --> " + ServerStagingL;
+                await SendUpdateMessage("Sunucular için Staging Main Güncellemesi.", "Sunucular için Staging Main dalında bir güncelleme paylaşıldı.\n**Staging kısmıyla alakalıdır.**", Change, false);
+                Server_Staging = ServerStagingL;
+            }
+            if (IsValidVersion(ServerAuxL) && ServerAuxL != Server_Aux02)
+            {
+                LogMessage($"[UpdateChecker] Server_Aux02 Update found! {Server_Aux02} -> {ServerAuxL}");
+                string Change = Server_Aux02 + " --> " + ServerAuxL;
+                await SendUpdateMessage("Sunucular için Staging Aux02 güncellemesi.", "Sunucular için Staging Aux02 dalında bir güncelleme paylaşıldı.\n**Staging kısmıyla alakalıdır.**", Change, false);
+                Server_Aux02 = ServerAuxL;
+            }
+
+            if (IsValidVersion(StagingPublicL) && StagingPublicL != Staging_Public)
+            {
+                LogMessage($"[UpdateChecker] Staging_Public Update found! {Staging_Public} -> {StagingPublicL}");
+                string Change = Staging_Public + " --> " + StagingPublicL;
+                await SendUpdateMessage("Staging için Yeni güncelleme!", "Staging için ana dalda bir güncelleme paylaşıldı.\n**Staging kısmıyla alakalıdır.**", Change, false);
+                Staging_Public = StagingPublicL;
+            }
+            if (IsValidVersion(StagingMainL) && StagingMainL != Staging_Main)
+            {
+                LogMessage($"[UpdateChecker] Staging_Main Update found! {Staging_Main} -> {StagingMainL}");
+                string Change = Staging_Main + " --> " + StagingMainL;
+                await SendUpdateMessage("Staging - Main için Yeni Güncelleme!", "Staging için main dalında bir güncelleme paylaşıldı.\n**Staging kısmıyla alakalıdır.**", Change, false);
+                Staging_Main = StagingMainL;
+            }
+            if (IsValidVersion(StagingAuxL) && StagingAuxL != Staging_Aux02)
+            {
+                LogMessage($"[UpdateChecker] Staging_Aux02 Update found! {Staging_Aux02} -> {StagingAuxL}");
+                string Change = Staging_Aux02 + " --> " + StagingAuxL;
+                await SendUpdateMessage("Staging - Aux02 için Yeni Güncelleme!", "Staging için Aux02 dalında bir güncelleme paylaşıldı.\n**Staging kısmıyla alakalıdır.**", Change, false);
+                Staging_Aux02 = StagingAuxL;
+            }
+        }
+
+        private static async Task SendUpdateMessage(string title, string message, string changemsg, bool everyone)
+        {
+            EmbedBuilder embedBuilder = new EmbedBuilder()
+            .WithTitle(title)
+            .WithDescription(message)
+            .WithColor(Discord.Color.Blue)
+            .WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj")
+            .AddField("Sürüm Numarası Değişimi:", changemsg, true);
+            var guildlist = updateTrackerChannel_IDS.Keys.ToList();
+            foreach (var guildId in guildlist)
+            {
+                var guild = _client.GetGuild(guildId);
+                if (guild == null) continue;
+                var channelids = updateTrackerChannel_IDS[guildId].ToList();
+                foreach (var channelId in channelids)
+                {
+                    var channel = guild.GetTextChannel(channelId);
+                    if (channel == null) continue;
+                    if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { await NoPermsSendMessage(guild, "(Güncelleme Takip Kanalı)"); continue; };
+                    if (everyone) await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
+                    else await channel.SendMessageAsync("", false, embedBuilder.Build());
                 }
             }
         }
@@ -730,7 +913,7 @@ namespace RT_Control
             else
             {
                 var differences = commitData.Results.Where(commit => newCommits.Contains(commit.message) && !storedCommits.Contains(commit.message)).ToList();
-                if (!differences.Any()) { /*LogMessage("[CommitTracker] Veri farkı yok.");*/ return; }
+                if (!differences.Any()) { return; }
                 foreach (var commit in differences)
                 {
                     LogMessage($"[CommitTracker] Yeni Commit: {commit.id}");
@@ -753,7 +936,7 @@ namespace RT_Control
                         {
                             var channel = guild.GetTextChannel(channelId);
                             if (channel == null) continue;
-                            if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { await NoPermsSendMessage(guild); continue; };
+                            if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { await NoPermsSendMessage(guild, "(Commit Takip Kanalı)"); continue; };
                             await channel.SendMessageAsync("", false, newEmbedBuilder.Build());
                         }
                     }
@@ -806,7 +989,7 @@ namespace RT_Control
             .AddField("Sonraki Güncelleme Tarihi:", $"<t:{_nextUpdateTimestamp}:F>", false)
             .AddField("Sonraki Güncellemeye Kalan Zaman:", $"<t:{_nextUpdateTimestamp}:R>", false)
             .WithColor(Discord.Color.Blue)
-            .WithFooter($"En Son Tarih Kontrolü: {DateTime.Now.ToString()}");
+            .WithFooter($"Son Güncelleme: {DateTime.Now.ToString()}");
             var guildlist = updateDateChannel_IDS.Keys.ToList();
             foreach (var guildId in guildlist)
             {
@@ -818,7 +1001,7 @@ namespace RT_Control
                     var channel = guild.GetTextChannel(channelId);
                     if (channel == null) continue;
                     var testr = await CheckBotPerms(guild);
-                    if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { await NoPermsSendMessage(guild); continue; };
+                    if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { await NoPermsSendMessage(guild, "(Güncelleme Tarihi kanalı)"); continue; };
                     var messages = await channel.GetMessagesAsync(limit: 1).FlattenAsync();
                     var lastMessage = messages.FirstOrDefault() as IUserMessage;
                     if (lastMessage != null && lastMessage.Author.Id == _client.CurrentUser.Id) await lastMessage.ModifyAsync(msg => msg.Embed = embedBuilder.Build());
@@ -889,12 +1072,12 @@ namespace RT_Control
             return version != null && version.Length == 8 && int.TryParse(version, out _);
         }
 
-        private static async Task NoPermsSendMessage(SocketGuild CurrentGuild)
+        private static async Task NoPermsSendMessage(SocketGuild CurrentGuild, string detay)
         {
-            LogMessage($"Yetersiz yetki. | Guild: {CurrentGuild.Name} - Id: {CurrentGuild.Id}");
-            await webhookLogs.SendMessageAsync($"Yetersiz yetki. | Guild: {CurrentGuild.Name} - Id: {CurrentGuild.Id}");
+            LogMessage($"Yetersiz yetki. {detay} | Guild: {CurrentGuild.Name} - Id: {CurrentGuild.Id}");
+            await webhookLogs.SendMessageAsync($"Yetersiz yetki. {detay} | Guild: {CurrentGuild.Name} - Id: {CurrentGuild.Id}");
             var defaultChannel = CurrentGuild.DefaultChannel;
-            if (defaultChannel != null) await defaultChannel.SendMessageAsync("Gerekli izinlere sahip olmadığım için işlevlerimi yerine getiremiyorum.");
+            if (defaultChannel != null) await defaultChannel.SendMessageAsync($"Gerekli izinlere sahip olmadığım için işlevlerimi yerine getiremiyorum. {detay}");
         }
 
         private static async Task<bool> CheckBotPerms(SocketGuild guild)

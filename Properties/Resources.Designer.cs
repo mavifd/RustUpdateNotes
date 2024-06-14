@@ -97,5 +97,19 @@ namespace RT_Control.Properties {
                 return ResourceManager.GetString("rustserver", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   @ShutdownOnFailedCommand 1 //set to 0 if updating multiple servers at once
+        ///@NoPromptForPassword 1
+        ///login anonymous
+        ///app_info_update 1
+        ///app_info_print 700580
+        ///quit benzeri yerelleştirilmiş bir dize arar.
+        /// </summary>
+        internal static string ruststaging {
+            get {
+                return ResourceManager.GetString("ruststaging", resourceCulture);
+            }
+        }
     }
 }

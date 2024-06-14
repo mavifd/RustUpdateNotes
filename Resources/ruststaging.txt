@@ -1,7 +1,7 @@
 @ShutdownOnFailedCommand 1 //set to 0 if updating multiple servers at once
 @NoPromptForPassword 1
-login anonymous
-app_info_update 1
-app_info_request 252490
-app_info_print 252490
+login rustupdate011 Verge1647.11
+app_info_update 1 
+app_info_request 700580
+app_info_print 700580
 quit
