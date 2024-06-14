@@ -838,14 +838,14 @@ namespace RT_Control
             {
                 LogMessage($"[UpdateChecker] Server_Staging Update found! {Server_Staging} -> {ServerStagingL}");
                 string Change = Server_Staging + " --> " + ServerStagingL;
-                await SendUpdateMessage("Sunucular için Staging Main Güncellemesi.", "Sunucular için Staging Main dalında bir güncelleme paylaşıldı.\n**Staging kısmıyla alakalıdır.**", Change, false);
+                await SendUpdateMessage("Sunucular için yeni bir Staging güncellemesi geldi.", "Sunucular için Staging - Main dalında yeni bir güncelleme paylaşıldı.\n**Rust - Staging Branch kısmıyla alakalıdır.**", Change, false);
                 Server_Staging = ServerStagingL;
             }
             if (IsValidVersion(ServerAuxL) && ServerAuxL != Server_Aux02)
             {
                 LogMessage($"[UpdateChecker] Server_Aux02 Update found! {Server_Aux02} -> {ServerAuxL}");
                 string Change = Server_Aux02 + " --> " + ServerAuxL;
-                await SendUpdateMessage("Sunucular için Staging Aux02 güncellemesi.", "Sunucular için Staging Aux02 dalında bir güncelleme paylaşıldı.\n**Staging kısmıyla alakalıdır.**", Change, false);
+                await SendUpdateMessage("Sunucular için yeni bir Staging - Aux02 güncellemesi geldi.", "Sunucular için Staging - Aux02 dalında yeni bir güncelleme paylaşıldı.\n**Rust - Staging kısmıyla alakalıdır.**", Change, false);
                 Server_Aux02 = ServerAuxL;
             }
 
@@ -853,21 +853,21 @@ namespace RT_Control
             {
                 LogMessage($"[UpdateChecker] Staging_Public Update found! {Staging_Public} -> {StagingPublicL}");
                 string Change = Staging_Public + " --> " + StagingPublicL;
-                await SendUpdateMessage("Staging için Yeni güncelleme!", "Staging için ana dalda bir güncelleme paylaşıldı.\n**Staging kısmıyla alakalıdır.**", Change, false);
+                await SendUpdateMessage("Oyuncular için yeni bir Staging güncellemesi geldi.", "Oyuncular için yeni bir Staging güncellemesi paylaşıldı.\nRust - Staging Branch.\n**Rust - Staging kısmıyla alakalıdır.**", Change, false);
                 Staging_Public = StagingPublicL;
             }
             if (IsValidVersion(StagingMainL) && StagingMainL != Staging_Main)
             {
                 LogMessage($"[UpdateChecker] Staging_Main Update found! {Staging_Main} -> {StagingMainL}");
                 string Change = Staging_Main + " --> " + StagingMainL;
-                await SendUpdateMessage("Staging - Main için Yeni Güncelleme!", "Staging için main dalında bir güncelleme paylaşıldı.\n**Staging kısmıyla alakalıdır.**", Change, false);
+                await SendUpdateMessage("Oyuncular için yeni bir Staging - Main güncellemesi geldi.", "Oyuncular için yeni bir Staging - Main güncellemesi paylaşıldı.\nRust - Staging Branch | Main Beta.\n**Rust - Staging kısmıyla alakalıdır.**", Change, false);
                 Staging_Main = StagingMainL;
             }
             if (IsValidVersion(StagingAuxL) && StagingAuxL != Staging_Aux02)
             {
                 LogMessage($"[UpdateChecker] Staging_Aux02 Update found! {Staging_Aux02} -> {StagingAuxL}");
                 string Change = Staging_Aux02 + " --> " + StagingAuxL;
-                await SendUpdateMessage("Staging - Aux02 için Yeni Güncelleme!", "Staging için Aux02 dalında bir güncelleme paylaşıldı.\n**Staging kısmıyla alakalıdır.**", Change, false);
+                await SendUpdateMessage("Oyuncular için yeni bir Staging - Aux02 güncellemesi geldi.", "Oyuncular için yeni bir Staging - Aux02 güncellemesi paylaşıldı.\nRust - Staging Branch | AUX02 Beta.\n**Staging kısmıyla alakalıdır.**", Change, false);
                 Staging_Aux02 = StagingAuxL;
             }
         }
@@ -1077,7 +1077,7 @@ namespace RT_Control
             LogMessage($"Yetersiz yetki. {detay} | Guild: {CurrentGuild.Name} - Id: {CurrentGuild.Id}");
             await webhookLogs.SendMessageAsync($"Yetersiz yetki. {detay} | Guild: {CurrentGuild.Name} - Id: {CurrentGuild.Id}");
             var defaultChannel = CurrentGuild.DefaultChannel;
-            if (defaultChannel != null) await defaultChannel.SendMessageAsync($"Gerekli izinlere sahip olmadığım için işlevlerimi yerine getiremiyorum. {detay}");
+            if (defaultChannel != null) await defaultChannel.SendMessageAsync($"Gerekli izinlere sahip olmadığım için ana işlevlerimi yerine getiremiyorum.\nSorun Detayı: {detay}");
         }
 
         private static async Task<bool> CheckBotPerms(SocketGuild guild)
