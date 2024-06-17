@@ -54,6 +54,7 @@ namespace RT_Control
 
         private static ulong _SohbetKanalID = 1223037877911556110;
         private static ulong _PingMavi = 170569747497222145;
+        private static ulong _MainDiscord = 1223037877911556107;
 
         private static List<string> UpdateKeys = new List<string> { "wipe", "güncelleme", "global", "update" };
 
@@ -94,6 +95,7 @@ namespace RT_Control
 
             LogMessage("All done!");
 
+
             await Task.Delay(Timeout.Infinite);
         }
 
@@ -103,8 +105,6 @@ namespace RT_Control
             {
                 try
                 {
-                    LogMessage($"InitChannel_Runner... {DateTime.Now}");
-                    await webhookLogs.SendMessageAsync($"InitChannel_Runner... {DateTime.Now}");
                     await Initialize_Channels();
                 }
                 catch (Exception ex)
@@ -123,8 +123,7 @@ namespace RT_Control
                 try
                 {
                     var botUser = _client.CurrentUser;
-                    LogMessage($"AppLogs_Runner... {DateTime.Now} - Server Count: {botUser.MutualGuilds.Count}");
-                    await webhookLogs.SendMessageAsync($"AppLogs_Runner... {DateTime.Now} - Server Count: {botUser.MutualGuilds.Count}");
+                    await webhookLogs.SendMessageAsync($"**{DateTime.Now}** - Server Count: {botUser.MutualGuilds.Count}");
                 }
                 catch (Exception ex)
                 {
@@ -141,8 +140,6 @@ namespace RT_Control
             {
                 try
                 {
-                    LogMessage($"UpdateMessage_Runner... {DateTime.Now}");
-                    await webhookLogs.SendMessageAsync($"UpdateMessage_Runner... {DateTime.Now}");
                     await SendUpdateDateMessage();
                 }
                 catch (Exception ex)
@@ -160,8 +157,6 @@ namespace RT_Control
             {
                 try
                 {
-                    LogMessage($"Responder_Runner... {DateTime.Now}");
-                    await webhookLogs.SendMessageAsync($"Responder_Runner... {DateTime.Now}");
                     await ResponderUpdate();
                 }
                 catch (Exception ex)
@@ -302,7 +297,7 @@ namespace RT_Control
                 {
                     string channelName = channelNames[i];
 
-                    if (CurrentGuild.Id == 1223037877911556107 && channelName == "güncelleme-notları┃📋") continue;
+                    if (CurrentGuild.Id == _MainDiscord && channelName == "güncelleme-notları┃📋") continue;
 
                     var channelCheck = CurrentGuild.TextChannels.FirstOrDefault(c => c.Name == channelName && c.CategoryId == categoryCurrent.Id);
                     if (channelCheck != null)
@@ -503,13 +498,13 @@ namespace RT_Control
             cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(90));
 
             var response_main = await httpClient.GetAsync(skinApiUrl, cancellationTokenSource.Token);
-            if (!response_main.IsSuccessStatusCode) { LogMessage("[SkinTracker] response contect null."); return; }
+            if (!response_main.IsSuccessStatusCode) { LogMessage("[SkinTracker] response contect null."); await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | skin response main null."); return; }
 
             var response = await response_main.Content.ReadAsStringAsync();
-            if (string.IsNullOrEmpty(response)) { LogMessage("[SkinTracker] response null."); return; }
+            if (string.IsNullOrEmpty(response)) { LogMessage("[SkinTracker] response null."); await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | skin response null."); return; }
 
             List<SkinItem> skinData = ParseSkins(response);
-            if (skinData == null || skinData.Count == 0) { LogMessage("[SkinTracker] skinData null."); return; }
+            if (skinData == null || skinData.Count == 0) { LogMessage("[SkinTracker] skinData null."); await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | skin data null."); return; }
 
             var newSkins = skinData.Select(Skin => Skin.Name).ToList();
 
@@ -519,33 +514,56 @@ namespace RT_Control
             {
                 storedSkins.Clear();
                 storedSkins.UnionWith(newSkins);
+                return;
             }
-            else
+
+            var differences = skinData.Where(Skin => newSkins.Contains(Skin.Name) && !storedSkins.Contains(Skin.Name)).ToList();
+            if (differences.Any())
             {
-                var differences = skinData.Where(Skin => newSkins.Contains(Skin.Name) && !storedSkins.Contains(Skin.Name)).ToList();
-                if (differences.Any())
+                var ourimage = CreateBigImage(skinData);
+                ourimage.Save("skinimage.png", System.Drawing.Imaging.ImageFormat.Png);
+                if (ourimage == null) { await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | skin image null"); return; }
+
+                var skincount = skinData.Count;
+                float totalcost = 0;
+                foreach (var skin in skinData)
                 {
-                    var ourimage = CreateBigImage(skinData);
-                    ourimage.Save("skinimage.png", System.Drawing.Imaging.ImageFormat.Png);
-                    if (ourimage == null) return;
+                    float price = float.Parse(skin.Price.Replace("$", ""), CultureInfo.InvariantCulture);
+                    totalcost += price;
+                }
+                LogMessage($"[SkinTracker] Mağaza Yenilendi --> {skincount} yeni kostüm. Toplam Kostüm Değeri: {totalcost}$");
 
-                    var skincount = skinData.Count;
-                    float totalcost = 0;
-                    foreach (var skin in skinData)
+                EmbedBuilder embedBuildformain = new EmbedBuilder()
+                .WithTitle(":bell: MAĞAZA YENİLENDİ! | " + DateTime.Now.ToShortDateString() + " :bell:")
+                .WithColor(Discord.Color.Blue)
+                .WithDescription($"**{skincount}** yeni kostüm mağazaye eklendi.\n\n Toplam Kostüm Değeri: **{totalcost}$**")
+                .WithUrl("https://store.steampowered.com/itemstore/252490/");
+
+                var guildlist = storeCheckerChannel_IDS.Keys.ToList();
+                foreach (var guildId in guildlist)
+                {
+                    var guild = _client.GetGuild(guildId);
+                    if (guild == null) continue;
+                    var channelIds = storeCheckerChannel_IDS[guildId].ToList();
+                    foreach (var channelId in channelIds)
                     {
-                        float price = float.Parse(skin.Price.Replace("$", ""), CultureInfo.InvariantCulture);
-                        totalcost += price;
+                        var channel = guild.GetTextChannel(channelId);
+                        if (channel == null) continue;
+                        if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { await NoPermsSendMessage(guild, "(Haftalık Mağaza Kanalı)"); continue; };
+                        await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
                     }
-                    LogMessage($"[SkinTracker] Mağaza Yenilendi --> {skincount} yeni kostüm. Toplam Kostüm Değeri: {totalcost}$");
+                }
 
-                    EmbedBuilder embedBuildformain = new EmbedBuilder()
-                    .WithTitle(":bell: MAĞAZA YENİLENDİ! | " + DateTime.Now.ToShortDateString() + " :bell:")
-                    .WithColor(Discord.Color.Blue)
-                    .WithDescription($"**{skincount}** yeni kostüm mağazaye eklendi.\n\n Toplam Kostüm Değeri: **{totalcost}$**")
-                    .WithUrl("https://store.steampowered.com/itemstore/252490/");
-
-                    var guildlist = storeCheckerChannel_IDS.Keys.ToList();
-                    foreach (var guildId in guildlist)
+                using (var fileStream = new FileStream("skinimage.png", FileMode.Open))
+                {
+                    byte[] imageData;
+                    using (var memoryStream = new MemoryStream())
+                    {
+                        fileStream.CopyTo(memoryStream);
+                        imageData = memoryStream.ToArray();
+                    }
+                    var guidlist = storeCheckerChannel_IDS.Keys.ToList();
+                    foreach (var guildId in guidlist)
                     {
                         var guild = _client.GetGuild(guildId);
                         if (guild == null) continue;
@@ -554,41 +572,17 @@ namespace RT_Control
                         {
                             var channel = guild.GetTextChannel(channelId);
                             if (channel == null) continue;
-                            if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { await NoPermsSendMessage(guild, "(Haftalık Mağaza Kanalı)"); continue; };
-                            await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
-                        }
-                    }
-
-                    using (var fileStream = new FileStream("skinimage.png", FileMode.Open))
-                    {
-                        byte[] imageData;
-                        using (var memoryStream = new MemoryStream())
-                        {
-                            fileStream.CopyTo(memoryStream);
-                            imageData = memoryStream.ToArray();
-                        }
-                        var guidlist = storeCheckerChannel_IDS.Keys.ToList();
-                        foreach (var guildId in guidlist)
-                        {
-                            var guild = _client.GetGuild(guildId);
-                            if (guild == null) continue;
-                            var channelIds = storeCheckerChannel_IDS[guildId].ToList();
-                            foreach (var channelId in channelIds)
+                            using (var memoryStream = new MemoryStream(imageData))
                             {
-                                var channel = guild.GetTextChannel(channelId);
-                                if (channel == null) continue;
-                                using (var memoryStream = new MemoryStream(imageData))
-                                {
-                                    if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { await NoPermsSendMessage(guild, "(Haftalık Mağaza Kanalı - Resim)"); continue; };
-                                    await channel.SendFileAsync(memoryStream, "skinimage.png");
-                                }
+                                if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { await NoPermsSendMessage(guild, "(Haftalık Mağaza Kanalı - Resim)"); continue; };
+                                await channel.SendFileAsync(memoryStream, "skinimage.png");
                             }
                         }
                     }
-                    File.Delete("skinimage.png");
-                    storedSkins.Clear();
-                    storedSkins.UnionWith(newSkins);
                 }
+                File.Delete("skinimage.png");
+                storedSkins.Clear();
+                storedSkins.UnionWith(newSkins);
             }
         }
 
@@ -804,72 +798,32 @@ namespace RT_Control
             int braceCount = 0;
             for (int i = startIndex; i < text.Length; i++)
             {
-                if (text[i] == '{')
-                {
-                    braceCount++;
-                }
-                else if (text[i] == '}')
-                {
-                    braceCount--;
-                    if (braceCount == 0) return i;
-                }
+                if (text[i] == '{') { braceCount++; }
+                else if (text[i] == '}') { braceCount--; if (braceCount == 0) return i; }
             }
             return -1;
         }
 
+        private static async Task UpdateVersionIfNeeded(string newVersion, string currentVersion, string title, string message, bool everyone, Action<string> updateCurrentVersion)
+        {
+            if (IsValidVersion(newVersion) && newVersion != currentVersion)
+            {
+                LogMessage($"[UpdateChecker] Update found! {currentVersion} -> {newVersion}");
+                string change = $"{currentVersion} --> {newVersion}";
+                await SendUpdateMessage(title, message, change, everyone);
+                updateCurrentVersion(newVersion);
+            }
+        }
+
         private static async Task CheckAndUpdateVersion(string MainL, string ServerPublicL, string ServerStagingL, string ServerAuxL, string StagingPublicL, string StagingMainL, string StagingAuxL)
         {
-            if (IsValidVersion(MainL) && MainL != Main_Public)
-            {
-                LogMessage($"[UpdateChecker] Main_Public Update found! {Main_Public} -> {MainL}");
-                string Change = Main_Public + " --> " + MainL;
-                await SendUpdateMessage(":radioactive: **Oyuncular için yeni bir Güncelleme geldi!** :radioactive:", "Güncellemeyi görmüyorsanız, steaminizi yeniden başlatmanız gerekiyor.", Change, true);
-                Main_Public = MainL;
-            }
-
-            if (IsValidVersion(ServerPublicL) && ServerPublicL != Server_Public)
-            {
-                LogMessage($"[UpdateChecker] Server_Public Update found! {Server_Public} -> {ServerPublicL}");
-                string Change = Server_Public + " --> " + ServerPublicL;
-                await SendUpdateMessage(":radioactive: **Sunucular için yeni bir Güncelleme geldi!** :radioactive:", "Sunucu sahipleri, sunucularını güncelleyebilirler.", Change, true);
-                Server_Public = ServerPublicL;
-            }
-            if (IsValidVersion(ServerStagingL) && ServerStagingL != Server_Staging)
-            {
-                LogMessage($"[UpdateChecker] Server_Staging Update found! {Server_Staging} -> {ServerStagingL}");
-                string Change = Server_Staging + " --> " + ServerStagingL;
-                await SendUpdateMessage("Sunucular için yeni bir Staging güncellemesi geldi.", "Sunucular için Staging - Main dalında yeni bir güncelleme paylaşıldı.\n**Rust - Staging Branch kısmıyla alakalıdır.**", Change, false);
-                Server_Staging = ServerStagingL;
-            }
-            if (IsValidVersion(ServerAuxL) && ServerAuxL != Server_Aux02)
-            {
-                LogMessage($"[UpdateChecker] Server_Aux02 Update found! {Server_Aux02} -> {ServerAuxL}");
-                string Change = Server_Aux02 + " --> " + ServerAuxL;
-                await SendUpdateMessage("Sunucular için yeni bir Staging - Aux02 güncellemesi geldi.", "Sunucular için Staging - Aux02 dalında yeni bir güncelleme paylaşıldı.\n**Rust - Staging kısmıyla alakalıdır.**", Change, false);
-                Server_Aux02 = ServerAuxL;
-            }
-
-            if (IsValidVersion(StagingPublicL) && StagingPublicL != Staging_Public)
-            {
-                LogMessage($"[UpdateChecker] Staging_Public Update found! {Staging_Public} -> {StagingPublicL}");
-                string Change = Staging_Public + " --> " + StagingPublicL;
-                await SendUpdateMessage("Oyuncular için yeni bir Staging güncellemesi geldi.", "Oyuncular için yeni bir Staging güncellemesi paylaşıldı.\nRust - Staging Branch.\n**Rust - Staging kısmıyla alakalıdır.**", Change, false);
-                Staging_Public = StagingPublicL;
-            }
-            if (IsValidVersion(StagingMainL) && StagingMainL != Staging_Main)
-            {
-                LogMessage($"[UpdateChecker] Staging_Main Update found! {Staging_Main} -> {StagingMainL}");
-                string Change = Staging_Main + " --> " + StagingMainL;
-                await SendUpdateMessage("Oyuncular için yeni bir Staging - Main güncellemesi geldi.", "Oyuncular için yeni bir Staging - Main güncellemesi paylaşıldı.\nRust - Staging Branch | Main Beta.\n**Rust - Staging kısmıyla alakalıdır.**", Change, false);
-                Staging_Main = StagingMainL;
-            }
-            if (IsValidVersion(StagingAuxL) && StagingAuxL != Staging_Aux02)
-            {
-                LogMessage($"[UpdateChecker] Staging_Aux02 Update found! {Staging_Aux02} -> {StagingAuxL}");
-                string Change = Staging_Aux02 + " --> " + StagingAuxL;
-                await SendUpdateMessage("Oyuncular için yeni bir Staging - Aux02 güncellemesi geldi.", "Oyuncular için yeni bir Staging - Aux02 güncellemesi paylaşıldı.\nRust - Staging Branch | AUX02 Beta.\n**Staging kısmıyla alakalıdır.**", Change, false);
-                Staging_Aux02 = StagingAuxL;
-            }
+            await UpdateVersionIfNeeded(MainL, Main_Public, ":radioactive: **Oyuncular için yeni bir Güncelleme geldi!** :radioactive:", "Güncellemeyi görmüyorsanız, steaminizi yeniden başlatmanız gerekiyor.", true, v => Main_Public = v);
+            await UpdateVersionIfNeeded(ServerPublicL, Server_Public, ":radioactive: **Sunucular için yeni bir Güncelleme geldi!** :radioactive:", "Sunucu sahipleri, sunucularını güncelleyebilirler.", true, v => Server_Public = v);
+            await UpdateVersionIfNeeded(ServerStagingL, Server_Staging, "", "**Sunucu** taraflı Rust Staging güncellemesi.", false, v => Server_Staging = v);
+            await UpdateVersionIfNeeded(ServerAuxL, Server_Aux02, "", "**Sunucu** taraflı Rust Staging - **Aux02** güncellemesi.", false, v => Server_Aux02 = v);
+            await UpdateVersionIfNeeded(StagingPublicL, Staging_Public, "", "**İstemci** taraflı Rust Staging - **Public** güncellemesi.", false, v => Staging_Public = v);
+            await UpdateVersionIfNeeded(StagingMainL, Staging_Main, "", "**İstemci** taraflı Rust Staging - **Main** güncellemesi.", false, v => Staging_Main = v);
+            await UpdateVersionIfNeeded(StagingAuxL, Staging_Aux02, "", "**İstemci** taraflı Rust Staging - **Aux02** güncellemesi.", false, v => Staging_Aux02 = v);
         }
 
         private static async Task SendUpdateMessage(string title, string message, string changemsg, bool everyone)
@@ -892,7 +846,8 @@ namespace RT_Control
                     if (channel == null) continue;
                     if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { await NoPermsSendMessage(guild, "(Güncelleme Takip Kanalı)"); continue; };
                     if (everyone) await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
-                    else await channel.SendMessageAsync("", false, embedBuilder.Build());
+                    else if (guild.Id == _MainDiscord && channel.Id == 1243032097099350029) await channel.SendMessageAsync($"<@{_PingMavi}>", false, embedBuilder.Build());
+                    else { await channel.SendMessageAsync("", false, embedBuilder.Build()); }
                 }
             }
         }
@@ -901,48 +856,44 @@ namespace RT_Control
         {
             var response = await httpClient.GetStringAsync(commitApiUrl);
             var commitData = JsonConvert.DeserializeObject<CommitData>(response);
-            if (commitData?.Results == null || !commitData.Results.Any()) { LogMessage("[CommitTracker] commitData null."); return; }
+            if (commitData?.Results == null || !commitData.Results.Any()) { LogMessage("[CommitTracker] commitData null."); await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Commit data null."); return; }
 
             var newCommits = commitData.Results.Select(commit => commit.message).ToList();
-            if (newCommits == null && !newCommits.Any()) { LogMessage("[CommitTracker] newCommits null."); return; }
+            if (newCommits == null || !newCommits.Any()) { LogMessage("[CommitTracker] newCommits null."); await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | new commits null."); return; }
 
-            if (storedCommits.Count == 0)
+            if (storedCommits.Count == 0) { storedCommits.UnionWith(newCommits); await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Commit first run"); return; }
+
+            var differences = commitData.Results.Where(commit => newCommits.Contains(commit.message) && !storedCommits.Contains(commit.message)).ToList();
+            if (!differences.Any()) { return; }
+
+            foreach (var commit in differences)
             {
-                storedCommits.UnionWith(newCommits);
-            }
-            else
-            {
-                var differences = commitData.Results.Where(commit => newCommits.Contains(commit.message) && !storedCommits.Contains(commit.message)).ToList();
-                if (!differences.Any()) { return; }
-                foreach (var commit in differences)
+                LogMessage($"[CommitTracker] Yeni Commit: {commit.id}");
+                var commitlink = "https://commits.facepunch.com/" + commit.id;
+                EmbedBuilder newEmbedBuilder = new EmbedBuilder()
+                .WithAuthor(commit.user.name, commit.user.avatar)
+                .WithTitle(commit.branch)
+                .WithDescription(commit.message)
+                .WithUrl(commitlink)
+                .WithColor(Discord.Color.Blue)
+                .WithFooter($"ID: {commit.id} | Change: {commit.changeset} | {DateTime.Now.ToString()}");
+
+                var guildlist = commitFollowerChannel_IDS.Keys.ToList();
+                foreach (var guildId in guildlist)
                 {
-                    LogMessage($"[CommitTracker] Yeni Commit: {commit.id}");
-                    var commitlink = "https://commits.facepunch.com/" + commit.id;
-                    EmbedBuilder newEmbedBuilder = new EmbedBuilder()
-                    .WithAuthor(commit.user.name, commit.user.avatar)
-                    .WithTitle(commit.branch)
-                    .WithDescription(commit.message)
-                    .WithUrl(commitlink)
-                    .WithColor(Discord.Color.Blue)
-                    .WithFooter($"ID: {commit.id} | Change: {commit.changeset} | {DateTime.Now.ToString()}");
-
-                    var guildlist = commitFollowerChannel_IDS.Keys.ToList();
-                    foreach (var guildId in guildlist)
+                    var guild = _client.GetGuild(guildId);
+                    if (guild == null) continue;
+                    var channelids = commitFollowerChannel_IDS[guildId].ToList();
+                    foreach (var channelId in channelids)
                     {
-                        var guild = _client.GetGuild(guildId);
-                        if (guild == null) continue;
-                        var channelids = commitFollowerChannel_IDS[guildId].ToList();
-                        foreach (var channelId in channelids)
-                        {
-                            var channel = guild.GetTextChannel(channelId);
-                            if (channel == null) continue;
-                            if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { await NoPermsSendMessage(guild, "(Commit Takip Kanalı)"); continue; };
-                            await channel.SendMessageAsync("", false, newEmbedBuilder.Build());
-                        }
+                        var channel = guild.GetTextChannel(channelId);
+                        if (channel == null) continue;
+                        if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { await NoPermsSendMessage(guild, "(Commit Takip Kanalı)"); continue; };
+                        await channel.SendMessageAsync("", false, newEmbedBuilder.Build());
                     }
                 }
-                storedCommits.UnionWith(newCommits);
             }
+            storedCommits.UnionWith(newCommits);
 
             LogMessage($"[CommitTracker] Depolanan: {storedCommits.Count}");
         }
@@ -1038,14 +989,14 @@ namespace RT_Control
         private async Task OnJoinedGuild(SocketGuild guild)
         {
             LogMessage($"New guild: {guild}");
-            await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | New guild: {guild}");
+            await webhookLogs.SendMessageAsync($"New guild: {guild}");
             await Initialize_Channels();
         }
 
         private async Task OnLeaveGuild(SocketGuild guild)
         {
             LogMessage($"Guild leaved: {guild}");
-            await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Guild leaved: {guild}");
+            await webhookLogs.SendMessageAsync($"Guild leaved: {guild}");
         }
 
         private Task BotReady()
@@ -1072,12 +1023,10 @@ namespace RT_Control
             return version != null && version.Length == 8 && int.TryParse(version, out _);
         }
 
-        private static async Task NoPermsSendMessage(SocketGuild CurrentGuild, string detay)
+        private static Task NoPermsSendMessage(SocketGuild CurrentGuild, string detay)
         {
             LogMessage($"Yetersiz yetki. {detay} | Guild: {CurrentGuild.Name} - Id: {CurrentGuild.Id}");
-            await webhookLogs.SendMessageAsync($"Yetersiz yetki. {detay} | Guild: {CurrentGuild.Name} - Id: {CurrentGuild.Id}");
-            var defaultChannel = CurrentGuild.DefaultChannel;
-            if (defaultChannel != null) await defaultChannel.SendMessageAsync($"Gerekli izinlere sahip olmadığım için ana işlevlerimi yerine getiremiyorum.\nSorun Detayı: {detay}");
+            return Task.CompletedTask;
         }
 
         private static async Task<bool> CheckBotPerms(SocketGuild guild)
