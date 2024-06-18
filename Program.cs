@@ -847,7 +847,7 @@ namespace RT_Control
                     if (channel == null) continue;
                     if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { await NoPermsSendMessage(guild, "(Güncelleme Takip Kanalı)"); continue; };
                     if (everyone) await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
-                    else if (guild.Id == _MainDiscord && channel.Id == 1243032097099350029) await channel.SendMessageAsync($"<@1252567993653792809", false, embedBuilder.Build());
+                    else if (guild.Id == _MainDiscord && channel.Id == 1243032097099350029) await channel.SendMessageAsync($"<@1252567993653792809>", false, embedBuilder.Build());
                     else { await channel.SendMessageAsync("", false, embedBuilder.Build()); }
                 }
             }
