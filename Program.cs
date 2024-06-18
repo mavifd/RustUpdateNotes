@@ -819,7 +819,6 @@ namespace RT_Control
         {
             await UpdateVersionIfNeeded(MainL, Main_Public, ":radioactive: **Oyuncular için yeni bir Güncelleme geldi!** :radioactive:", "Güncellemeyi görmüyorsanız, steaminizi yeniden başlatmanız gerekiyor.", true, v => Main_Public = v);
             await UpdateVersionIfNeeded(ServerPublicL, Server_Public, ":radioactive: **Sunucular için yeni bir Güncelleme geldi!** :radioactive:", "Sunucu sahipleri, sunucularını güncelleyebilirler.", true, v => Server_Public = v);
-          
             await UpdateVersionIfNeeded(ServerStagingL, Server_Staging, "", "**Sunucu** taraflı **Rust Staging** güncellemesi.", false, v => Server_Staging = v);
             await UpdateVersionIfNeeded(ServerAuxL, Server_Aux02, "", "**Sunucu** taraflı **Rust Staging** - **Aux02** güncellemesi.", false, v => Server_Aux02 = v);
             await UpdateVersionIfNeeded(StagingPublicL, Staging_Public, "", "**İstemci** taraflı **Rust Staging** - **Public** güncellemesi.", false, v => Staging_Public = v);
@@ -847,7 +846,17 @@ namespace RT_Control
                     if (channel == null) continue;
                     if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { await NoPermsSendMessage(guild, "(Güncelleme Takip Kanalı)"); continue; };
                     if (everyone) await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
-                    else if (guild.Id == _MainDiscord && channel.Id == 1243032097099350029) await channel.SendMessageAsync($"<@1252567993653792809>", false, embedBuilder.Build());
+                    else if (guild.Id == _MainDiscord && channel.Id == 1243032097099350029)
+                    {
+                        var ping_role = guild.GetRole(1252567993653792809);
+                        if (ping_role != null) {
+                            await channel.SendMessageAsync(ping_role.Mention, false, embedBuilder.Build());
+                        }
+                        else
+                        {
+                            await channel.SendMessageAsync("---", false, embedBuilder.Build());
+                        }
+                    }
                     else { await channel.SendMessageAsync("", false, embedBuilder.Build()); }
                 }
             }
