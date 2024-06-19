@@ -4,13 +4,13 @@ using System.Runtime.InteropServices;
 // Bir bütünleştirilmiş koda ilişkin Genel Bilgiler aşağıdaki öznitelikler kümesiyle
 // denetlenir. Bütünleştirilmiş kod ile ilişkili bilgileri değiştirmek için
 // bu öznitelik değerlerini değiştirin.
-[assembly: AssemblyTitle("RT_Control")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("RustUpdateNotes")]
+[assembly: AssemblyDescription("RustUpdateNotes")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("RT_Control")]
-[assembly: AssemblyCopyright("Copyright ©  2024")]
-[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCompany("RustUpdateNotes")]
+[assembly: AssemblyProduct("RustUpdateNotes")]
+[assembly: AssemblyCopyright("Copyright RustUpdateNotes © 2024")]
+[assembly: AssemblyTrademark("RustUpdateNotes")]
 [assembly: AssemblyCulture("")]
 
 // ComVisible özniteliğinin false olarak ayarlanması bu bütünleştirilmiş koddaki türleri

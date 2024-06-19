@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace RT_Control.Properties {
+namespace RustUpdateNotes.Properties {
     using System;
     
     
@@ -39,7 +39,7 @@ namespace RT_Control.Properties {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("RT_Control.Properties.Resources", typeof(Resources).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("RustUpdateNotes.Properties.Resources", typeof(Resources).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
@@ -75,6 +75,7 @@ namespace RT_Control.Properties {
         ///@NoPromptForPassword 1
         ///login anonymous
         ///app_info_update 1
+        ///app_info_request 252490
         ///app_info_print 252490
         ///quit benzeri yerelleştirilmiş bir dize arar.
         /// </summary>
@@ -89,6 +90,7 @@ namespace RT_Control.Properties {
         ///@NoPromptForPassword 1
         ///login anonymous
         ///app_info_update 1
+        ///app_info_request 258550
         ///app_info_print 258550
         ///quit benzeri yerelleştirilmiş bir dize arar.
         /// </summary>
@@ -101,8 +103,9 @@ namespace RT_Control.Properties {
         /// <summary>
         ///   @ShutdownOnFailedCommand 1 //set to 0 if updating multiple servers at once
         ///@NoPromptForPassword 1
-        ///login anonymous
-        ///app_info_update 1
+        ///login rustupdate011 Verge1647.11
+        ///app_info_update 1 
+        ///app_info_request 700580
         ///app_info_print 700580
         ///quit benzeri yerelleştirilmiş bir dize arar.
         /// </summary>
