@@ -831,7 +831,14 @@ namespace RustUpdateNotes
                     if (channel == null) continue;
                     if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { LogMessage($"Güncelleme Takip Yetki Yetersizliği| Guild: {guild.Name}"); continue; };
                     if (local) await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
-                    else { if (guild.Id == _MainDiscord && channel.Id == 1256198216337199199) await channel.SendMessageAsync("", false, embedBuilder.Build()); }
+                    else
+                    {
+                        if (guild.Id == _MainDiscord) 
+                        {
+                            var staginglogs = guild.GetTextChannel(1256198216337199199);
+                            if (staginglogs != null) await staginglogs.SendMessageAsync("", false, embedBuilder.Build());
+                        }
+                    }
                 }
             }
         }
@@ -860,7 +867,8 @@ namespace RustUpdateNotes
                 .WithDescription(commit.Message)
                 .WithUrl(commitlink)
                 .WithColor(Discord.Color.Blue)
-                .WithFooter($"Change: {commit.Changeset}({commit.Id}) | {DateTime.Now:dd/MM HH:mm}");
+                .WithFooter($"Change: {commit.Changeset} ({commit.Id}) • {DateTime.Now:dd/MM HH:mm}");
+                
 
                 var guildlist = commitFollowerChannel_IDS.Keys.ToList();
                 foreach (var guildId in guildlist)
