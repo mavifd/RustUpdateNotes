@@ -349,6 +349,7 @@ namespace RustUpdateNotes
                                 {
                                     LogMessage($"Güncelleme notları takip edilemedi. | {CurrentGuild.Name}");
                                     await webhookLogs.SendMessageAsync($"Güncelleme notları takip edilemedi. - {newChannel.Name} | {CurrentGuild.Name}");
+                                    await newChannel.SendMessageAsync("Güncelleme notları bir sorundan dolayı takip edilemedi.\nhttps://discord.com/channels/1223037877911556107/1223058873573969920 buradan kendiniz **Takip Et** diyerek ekleyebilirsiniz.");
                                 }
                                 break;
 
@@ -488,7 +489,7 @@ namespace RustUpdateNotes
             if (string.IsNullOrEmpty(response)) { LogMessage("[SkinTracker] response null."); await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | skin response null."); return; }
 
             List<SkinItem> skinData = ParseSkins(response);
-            if (skinData == null || skinData.Count == 0) { LogMessage("[SkinTracker] skinData null."); await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | skin data null."); return; }
+            if (skinData == null || skinData.Count == 0) { LogMessage("[SkinTracker] skinData null."); await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | skin data null.\n Response: {response}"); return; }
 
             var newSkins = skinData.Select(Skin => Skin.Name).ToList();
 
@@ -788,13 +789,13 @@ namespace RustUpdateNotes
             return -1;
         }
 
-        private static async Task UpdateVersionIfNeeded(string newVersion, string currentVersion, string title, string message, bool everyone, Action<string> updateCurrentVersion)
+        private static async Task UpdateVersionIfNeeded(string newVersion, string currentVersion, string title, string message, bool local, Action<string> updateCurrentVersion)
         {
             if (IsValidVersion(newVersion) && newVersion != currentVersion)
             {
                 LogMessage($"[UpdateChecker] Update found! {currentVersion} -> {newVersion}");
                 string change = $"{currentVersion} --> {newVersion}";
-                await SendUpdateMessage(title, message, change, everyone);
+                await SendUpdateMessage(title, message, change, local);
                 updateCurrentVersion(newVersion);
             }
         }
@@ -810,7 +811,7 @@ namespace RustUpdateNotes
             await UpdateVersionIfNeeded(StagingAuxL, Staging_Aux02, "", "**İstemci** taraflı **Rust Staging** - **Aux02** güncellemesi.", false, v => Staging_Aux02 = v);
         }
 
-        private static async Task SendUpdateMessage(string title, string message, string changemsg, bool everyone)
+        private static async Task SendUpdateMessage(string title, string message, string changemsg, bool local)
         {
             EmbedBuilder embedBuilder = new EmbedBuilder()
             .WithTitle(title)
@@ -829,20 +830,8 @@ namespace RustUpdateNotes
                     var channel = guild.GetTextChannel(channelId);
                     if (channel == null) continue;
                     if (!await CheckBotPerms(guild) || !await CheckChannelPerms(channel)) { LogMessage($"Güncelleme Takip Yetki Yetersizliği| Guild: {guild.Name}"); continue; };
-                    if (everyone) await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
-                    else if (guild.Id == _MainDiscord && channel.Id == 1243032097099350029)
-                    {
-                        var ping_role = guild.GetRole(1252567993653792809);
-                        if (ping_role != null)
-                        {
-                            await channel.SendMessageAsync(ping_role.Mention, false, embedBuilder.Build());
-                        }
-                        else
-                        {
-                            await channel.SendMessageAsync("Mention failed.", false, embedBuilder.Build());
-                        }
-                    }
-                    else { await channel.SendMessageAsync("", false, embedBuilder.Build()); }
+                    if (local) await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
+                    else { if (guild.Id == _MainDiscord && channel.Id == 1256198216337199199) await channel.SendMessageAsync("", false, embedBuilder.Build()); }
                 }
             }
         }
@@ -858,7 +847,7 @@ namespace RustUpdateNotes
 
             if (storedCommits.Count == 0) { storedCommits.UnionWith(newCommits); await webhookLogs.SendMessageAsync($"<@{_PingMavi}> | Commit first run"); return; }
 
-            var differences = commitData.Results.Where(commit => newCommits.Contains(commit.Message) && !storedCommits.Contains(commit.Message)).ToList();
+            var differences = commitData.Results.Where(commit => newCommits.Contains(commit.Message) && !storedCommits.Contains(commit.Message)).OrderBy(commit => commit.Created).ToList();
             if (!differences.Any()) { return; }
 
             foreach (var commit in differences)
@@ -871,7 +860,7 @@ namespace RustUpdateNotes
                 .WithDescription(commit.Message)
                 .WithUrl(commitlink)
                 .WithColor(Discord.Color.Blue)
-                .WithFooter($"ID: {commit.Id} | Change: {commit.Changeset} | {DateTime.Now:dd-MM HH:mm}");
+                .WithFooter($"Change: {commit.Changeset}({commit.Id}) | {DateTime.Now:dd/MM HH:mm}");
 
                 var guildlist = commitFollowerChannel_IDS.Keys.ToList();
                 foreach (var guildId in guildlist)
@@ -935,7 +924,7 @@ namespace RustUpdateNotes
             .AddField("Sonraki Güncelleme Tarihi:", $"<t:{_nextUpdateTimestamp}:F>", false)
             .AddField("Sonraki Güncellemeye Kalan Zaman:", $"<t:{_nextUpdateTimestamp}:R>", false)
             .WithColor(Discord.Color.Blue)
-            .WithFooter($"Son Güncelleme: {DateTime.Now:dd-MM HH:mm}");
+            .WithFooter($"Son Güncelleme: {DateTime.Now:dd/MM HH:mm}");
             var guildlist = updateDateChannel_IDS.Keys.ToList();
             foreach (var guildId in guildlist)
             {
@@ -983,15 +972,15 @@ namespace RustUpdateNotes
 
         private async Task OnJoinedGuild(SocketGuild guild)
         {
-            LogMessage($"New guild: {guild}");
-            await webhookLogs.SendMessageAsync($"New guild: {guild}");
+            LogMessage($"**New guild:** {guild}");
+            await webhookLogs.SendMessageAsync($"**New guild:** {guild}");
             await Initialize_Channels();
         }
 
         private async Task OnLeaveGuild(SocketGuild guild)
         {
-            LogMessage($"Guild leaved: {guild}");
-            await webhookLogs.SendMessageAsync($"Guild leaved: {guild}");
+            LogMessage($"**Guild leaved:** {guild}");
+            await webhookLogs.SendMessageAsync($"**Guild leaved:** {guild}");
         }
 
         private async Task BotReady()
