@@ -99,20 +99,5 @@ namespace RustUpdateNotes.Properties {
                 return ResourceManager.GetString("rustserver", resourceCulture);
             }
         }
-        
-        /// <summary>
-        ///   @ShutdownOnFailedCommand 1 //set to 0 if updating multiple servers at once
-        ///@NoPromptForPassword 1
-        ///login rustupdate011 Verge1647.11
-        ///app_info_update 1 
-        ///app_info_request 700580
-        ///app_info_print 700580
-        ///quit benzeri yerelleştirilmiş bir dize arar.
-        /// </summary>
-        internal static string ruststaging {
-            get {
-                return ResourceManager.GetString("ruststaging", resourceCulture);
-            }
-        }
     }
 }
