@@ -44,16 +44,11 @@ namespace RustUpdateNotes.LoggerClass
         public static void LogMessage(string message, [CallerMemberName] string callerName = "", [CallerFilePath] string callerFilePath = "")
         {
             string prefix = string.Empty;
-            ConsoleColor originalColor = Console.ForegroundColor;
-            ConsoleColor prefixColor = originalColor;
+            ConsoleColor prefixColor = ConsoleColor.Gray;
 
             int pr = GetPrefixFromClass(callerFilePath);
             switch (pr)
             {
-                case 0:
-                    prefix = "";
-                    prefixColor = ConsoleColor.Gray;
-                    break;
                 case 1:
                     prefix = "[Channel] ";
                     prefixColor = ConsoleColor.Cyan;
@@ -84,7 +79,7 @@ namespace RustUpdateNotes.LoggerClass
             Console.Write(logEntry);
             Console.ForegroundColor = prefixColor;
             Console.Write(prefix);
-            Console.ForegroundColor = originalColor;
+            Console.ForegroundColor = ConsoleColor.Gray;
             Console.WriteLine(message);
         }
 

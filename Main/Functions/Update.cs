@@ -41,6 +41,17 @@ namespace RustUpdateNotes.UpdateClass
         {
             try
             {
+
+                if (string.IsNullOrEmpty(Main) || string.IsNullOrEmpty(Server))
+                {
+                    Logger.LogMessage($"Main/Server null or empty. Getting version numbers...");
+                    GetRustVersionAsync("rustapp.txt", ref Main);
+                    Logger.LogMessage($"Main: {Main}");
+                    GetRustVersionAsync("rustserver.txt", ref Server);
+                    Logger.LogMessage($"Server: {Server}");
+                    return;
+                }
+
                 string MainL = "1";
                 string ServerL = "1";
                 GetRustVersionAsync("rustapp.txt", ref MainL);
@@ -161,27 +172,6 @@ namespace RustUpdateNotes.UpdateClass
                 Console.ResetColor();
                 Directory.CreateDirectory("out");
             }
-            Logger.LogMessage($"Başlangıç değerleri alınıyor...");
-            while (true)
-            {
-                GetRustVersionAsync_Starting("rustapp.txt");
-                Logger.LogMessage($"Main: {Main}");
-
-                GetRustVersionAsync_Starting("rustserver.txt");
-                Logger.LogMessage($"Server: {Server}");
-
-                if (IsValidVersion(Main) && IsValidVersion(Server))
-                {
-                    break;
-                }
-                else
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Logger.LogMessage($"Geçersiz değer mevcut. Tekrarlanılıyor...");
-                    Console.ResetColor();
-                }
-            }
-
             Console.ResetColor();
             Logger.LogMessage($"Döngüye giriliyor...");
         }
@@ -213,38 +203,6 @@ namespace RustUpdateNotes.UpdateClass
                 else if (scriptFileName == "rustserver.txt")
                 {
                     OptArg1 = FindVersion(outputFileName, "public");
-                }
-            }
-        }
-
-        private static void GetRustVersionAsync_Starting(string scriptFileName)
-        {
-            string outputFileName = $"out/{Path.GetFileNameWithoutExtension(scriptFileName)}out.txt";
-            string scriptpath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "scripts", scriptFileName);
-
-            File.Delete(outputFileName);
-
-            ProcessStartInfo startInfo = new ProcessStartInfo
-            {
-                FileName = "cmd.exe",
-                Arguments = $"/c C:\\steamcmd\\steamcmd.exe +runscript {scriptpath} > {outputFileName}",
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using (Process process = new Process { StartInfo = startInfo })
-            {
-                process.Start();
-                process.WaitForExit();
-
-                if (scriptFileName == "rustapp.txt")
-                {
-                    Main = FindVersion(outputFileName, "public");
-                }
-                else if (scriptFileName == "rustserver.txt")
-                {
-                    Server = FindVersion(outputFileName, "public");
                 }
             }
         }

@@ -14,8 +14,8 @@ namespace RustUpdateNotes.CommitClass
     {
         private static readonly string commitApiUrl = "https://commits.facepunch.com/r/rust_reboot/?format=json";
 
-        private static List<string> storedCommits = new List<string>();
-        private static List<string> sentCommits = new List<string>();
+        private static List<int> storedCommits = new List<int>();
+        private static List<int> sentCommits = new List<int>();
 
         private static HttpClient httpClient = new HttpClient();
 
@@ -60,7 +60,7 @@ namespace RustUpdateNotes.CommitClass
                     return;
                 }
 
-                var newCommits = commitData.Results.Select(commit => commit.Changeset).ToList();
+                var newCommits = commitData.Results.Select(commit => commit.Id).ToList();
                 if (newCommits == null || !newCommits.Any())
                 {
                     Logger.LogMessage($"newCommits null.");
@@ -71,18 +71,25 @@ namespace RustUpdateNotes.CommitClass
                 if (storedCommits.Count == 0)
                 {
                     storedCommits.AddRange(newCommits);
-                    Logger.LogMessage($"Commit first run");
+                    Logger.LogMessage($"Commit first run.");
                     return;
                 }
 
+
+                Logger.LogMessage($"Latests: " +
+                       $"{commitData.Results[0].Id}/{commitData.Results[0].Changeset}, " +
+                       $"{commitData.Results[1].Id}/{commitData.Results[1].Changeset}, " +
+                       $"{commitData.Results[2].Id}/{commitData.Results[2].Changeset} | " +
+                       $"Stored: {storedCommits.Count} (N:{newCommits.Count}) - Sended: {sentCommits.Count}");
+
+
                 var differences = commitData.Results
-                .Where(commit => !storedCommits.Contains(commit.Changeset) && !sentCommits.Contains(commit.Changeset))
+                .Where(commit => !storedCommits.Contains(commit.Id) && !sentCommits.Contains(commit.Id))
                 .OrderBy(commit => commit.Created)
                 .ToList();
 
                 if (!differences.Any())
                 {
-                    Logger.LogMessage($"Same commits. - Stored: {storedCommits.Count} (F:{newCommits.Count}) - Sended: {sentCommits.Count}");
                     return;
                 }
 
@@ -96,7 +103,7 @@ namespace RustUpdateNotes.CommitClass
                         committitle = $"{commit.Branch} | **Merge**";
                     }
 
-                    Logger.LogMessage($"Yeni Commit: {commit.Changeset}");
+                    Logger.LogMessage($"New Commit: {commit.Changeset}");
                     var commitlink = "https://commits.facepunch.com/" + commit.Id;
                     EmbedBuilder newEmbedBuilder = new EmbedBuilder()
                     .WithAuthor(commit.User.Name, commit.User.Avatar)
@@ -129,8 +136,8 @@ namespace RustUpdateNotes.CommitClass
                             await channel.SendMessageAsync("", false, newEmbedBuilder.Build());
                         }
                     }
-                    sentCommits.Add(commit.Changeset);
-                    storedCommits.Add(commit.Changeset);
+                    sentCommits.Add(commit.Id);
+                    storedCommits.Add(commit.Id);
                 }
                 Logger.LogMessage($"Stored: {storedCommits.Count} - Sended: {sentCommits.Count}");
             }
