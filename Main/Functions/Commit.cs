@@ -14,7 +14,8 @@ namespace RustUpdateNotes.CommitClass
     {
         private static readonly string commitApiUrl = "https://commits.facepunch.com/r/rust_reboot/?format=json";
 
-        private static HashSet<string> storedCommits = new HashSet<string>();
+        private static List<string> storedCommits = new List<string>();
+        private static List<string> sentCommits = new List<string>();
 
         private static HttpClient httpClient = new HttpClient();
 
@@ -44,48 +45,94 @@ namespace RustUpdateNotes.CommitClass
             try
             {
                 var response = await httpClient.GetStringAsync(commitApiUrl);
-                if (response == null) { Logger.LogMessage("[CommitTracker] response null."); await Logger.DiscordMessage($"[CommitTracker] response null.", true); return; }
+                if (response == null)
+                {
+                    Logger.LogMessage($"response null.");
+                    await Logger.DiscordMessage($"response null.", true);
+                    return;
+                }
 
                 var commitData = JsonConvert.DeserializeObject<TheCommit>(response);
-                if (commitData?.Results == null || !commitData.Results.Any()) { Logger.LogMessage("[CommitTracker] commitData null."); await Logger.DiscordMessage($"Commit data null.", true); return; }
+                if (commitData?.Results == null || !commitData.Results.Any())
+                {
+                    Logger.LogMessage($"commitData null.");
+                    await Logger.DiscordMessage($"commitData null.", true);
+                    return;
+                }
 
-                var newCommits = commitData.Results.Select(commit => commit.Message).ToList();
-                if (newCommits == null || !newCommits.Any()) { Logger.LogMessage("[CommitTracker] newCommits null."); await Logger.DiscordMessage($"New commits null.", true); return; }
+                var newCommits = commitData.Results.Select(commit => commit.Changeset).ToList();
+                if (newCommits == null || !newCommits.Any())
+                {
+                    Logger.LogMessage($"newCommits null.");
+                    await Logger.DiscordMessage($"newCommits null.", true);
+                    return;
+                }
 
-                if (storedCommits.Count == 0) { storedCommits.UnionWith(newCommits); await Logger.DiscordMessage($"Commit first run", true); return; }
+                if (storedCommits.Count == 0)
+                {
+                    storedCommits.AddRange(newCommits);
+                    Logger.LogMessage($"Commit first run");
+                    return;
+                }
 
-                var differences = commitData.Results.Where(commit => newCommits.Contains(commit.Message) && !storedCommits.Contains(commit.Message)).OrderBy(commit => commit.Created).ToList();
-                if (!differences.Any()) { Logger.LogMessage("[CommitTracker] diff null."); return; }
+                var differences = commitData.Results
+                .Where(commit => !storedCommits.Contains(commit.Changeset) && !sentCommits.Contains(commit.Changeset))
+                .OrderBy(commit => commit.Created)
+                .ToList();
+
+                if (!differences.Any())
+                {
+                    Logger.LogMessage($"Same commits. - Stored: {storedCommits.Count} (F:{newCommits.Count}) - Sended: {sentCommits.Count}");
+                    return;
+                }
 
                 foreach (var commit in differences)
                 {
-                    Logger.LogMessage($"[CommitTracker] Yeni Commit: {commit.Id}");
+                    Color commitcolor = Color.Blue;
+                    string committitle = commit.Branch;
+                    if (commit.Message.IndexOf("merge", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        commitcolor = Color.Red;
+                        committitle = $"{commit.Branch} | **Merge**";
+                    }
+
+                    Logger.LogMessage($"Yeni Commit: {commit.Changeset}");
                     var commitlink = "https://commits.facepunch.com/" + commit.Id;
                     EmbedBuilder newEmbedBuilder = new EmbedBuilder()
                     .WithAuthor(commit.User.Name, commit.User.Avatar)
-                    .WithTitle(commit.Branch)
+                    .WithTitle(committitle)
                     .WithDescription(commit.Message)
                     .WithUrl(commitlink)
-                    .WithColor(Color.Blue)
-                    .WithFooter($"Change: {commit.Changeset} ({commit.Id}) • {DateTime.Now:dd/MM HH:mm}");
-
+                    .WithColor(commitcolor)
+                    .WithFooter($"Change: {commit.Changeset} ({commit.Id}) • {commit.Created.AddHours(3):dd/MM HH:mm}");
                     var guildlist = Global.CommitFollowerChannels.Keys.ToList();
                     foreach (var guildId in guildlist)
                     {
                         var guild = Global.Client.GetGuild(guildId);
-                        if (guild == null) continue;
+                        if (guild == null)
+                        {
+                            continue;
+                        }
                         var channelids = Global.CommitFollowerChannels[guildId].ToList();
                         foreach (var channelId in channelids)
                         {
                             var channel = guild.GetTextChannel(channelId);
-                            if (channel == null) continue;
-                            if (!await Logger.CheckBotPerms(guild) || !await Logger.CheckChannelPerms(channel)) { Logger.LogMessage($"Commit Yetki Yetersizliği | Guild: {guild.Name}"); continue; };
+                            if (channel == null)
+                            {
+                                continue;
+                            }
+                            if (!await Logger.CheckBotPerms(guild) || !await Logger.CheckChannelPerms(channel))
+                            {
+                                Logger.LogMessage($"Commit Yetki Yetersizliği | Guild: {guild.Name}");
+                                continue;
+                            };
                             await channel.SendMessageAsync("", false, newEmbedBuilder.Build());
                         }
                     }
+                    sentCommits.Add(commit.Changeset);
+                    storedCommits.Add(commit.Changeset);
                 }
-                storedCommits.UnionWith(newCommits);
-                Logger.LogMessage($"[CommitTracker] Depolanan: {storedCommits.Count}");
+                Logger.LogMessage($"Stored: {storedCommits.Count} - Sended: {sentCommits.Count}");
             }
             catch (Exception ex)
             {

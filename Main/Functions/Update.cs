@@ -41,13 +41,13 @@ namespace RustUpdateNotes.UpdateClass
         {
             try
             {
-                string Local_Main = "1";
-                string Local_Server = "1";
-                GetRustVersionAsync("rustapp.txt", ref Local_Main);
-                Logger.LogMessage($"[UpdateChecker] Local_Main: {Local_Main}");
-                GetRustVersionAsync("rustserver.txt", ref Local_Server);
-                Logger.LogMessage($"[UpdateChecker] Local_Server: {Local_Server}");
-                await CheckAndUpdateVersion(Local_Main, Local_Server);
+                string MainL = "1";
+                string ServerL = "1";
+                GetRustVersionAsync("rustapp.txt", ref MainL);
+                Logger.LogMessage($"Main: {MainL}");
+                GetRustVersionAsync("rustserver.txt", ref ServerL);
+                Logger.LogMessage($"Server: {ServerL}");
+                await CheckAndUpdateVersion(MainL, ServerL);
             }
             catch (Exception ex)
             {
@@ -56,17 +56,17 @@ namespace RustUpdateNotes.UpdateClass
             }
         }
 
-        private static async Task CheckAndUpdateVersion(string MainL, string ServerPublicL)
+        private static async Task CheckAndUpdateVersion(string MainL, string ServerL)
         {
             await UpdateVersionIfNeeded(MainL, Main, ":radioactive: **Oyuncular için yeni bir Güncelleme geldi!** :radioactive:", "Güncellemeyi görmüyorsanız, steaminizi yeniden başlatmanız gerekiyor.", true, v => Main = v);
-            await UpdateVersionIfNeeded(ServerPublicL, Server, ":radioactive: **Sunucular için yeni bir Güncelleme geldi!** :radioactive:", "Sunucu sahipleri, sunucularını güncelleyebilirler.", true, v => Server = v);
+            await UpdateVersionIfNeeded(ServerL, Server, ":radioactive: **Sunucular için yeni bir Güncelleme geldi!** :radioactive:", "Sunucu sahipleri, sunucularını güncelleyebilirler.", true, v => Server = v);
         }
 
         private static async Task UpdateVersionIfNeeded(string newVersion, string currentVersion, string title, string message, bool local, Action<string> updateCurrentVersion)
         {
             if (IsValidVersion(newVersion) && newVersion != currentVersion)
             {
-                Logger.LogMessage($"[UpdateChecker] Update found! {currentVersion} -> {newVersion}");
+                Logger.LogMessage($"New update: {currentVersion} -> {newVersion}");
                 string change = $"{currentVersion} --> {newVersion}";
                 await SendUpdateMessage(title, message, change);
                 updateCurrentVersion(newVersion);
@@ -85,13 +85,23 @@ namespace RustUpdateNotes.UpdateClass
             foreach (var guildId in guildlist)
             {
                 var guild = Global.Client.GetGuild(guildId);
-                if (guild == null) continue;
+                if (guild == null)
+                {
+                    continue;
+                }
                 var channelids = Global.UpdateTrackerChannels[guildId].ToList();
                 foreach (var channelId in channelids)
                 {
                     var channel = guild.GetTextChannel(channelId);
-                    if (channel == null) continue;
-                    if (!await Logger.CheckBotPerms(guild) || !await Logger.CheckChannelPerms(channel)) { Logger.LogMessage($"Güncelleme Takip Yetki Yetersizliği| Guild: {guild.Name}"); continue; };
+                    if (channel == null)
+                    {
+                        continue;
+                    }
+                    if (!await Logger.CheckBotPerms(guild) || !await Logger.CheckChannelPerms(channel))
+                    {
+                        Logger.LogMessage($"Güncelleme Takip Yetki Yetersizliği| Guild: {guild.Name}");
+                        continue;
+                    };
                     await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
                 }
             }
@@ -99,17 +109,17 @@ namespace RustUpdateNotes.UpdateClass
 
         public static async Task Initialize_UpdateChecker()
         {
-            Logger.LogMessage("[UpdateChecker] SteamCMD kontrol ediliyor...");
+            Logger.LogMessage($"SteamCMD kontrol ediliyor...");
             if (File.Exists("C:\\steamcmd\\steamcmd.exe"))
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Logger.LogMessage("[UpdateChecker] SteamCMD doğru dizine kurulu.");
+                Logger.LogMessage($"SteamCMD doğru dizine kurulu.");
                 Console.ResetColor();
             }
             else
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Logger.LogMessage("[UpdateChecker] SteamCMD bulunamadı.");
+                Logger.LogMessage($"SteamCMD bulunamadı.");
                 Console.ResetColor();
                 await Task.Delay(5000);
                 Environment.Exit(1);
@@ -117,60 +127,63 @@ namespace RustUpdateNotes.UpdateClass
             if (!Directory.Exists("scripts"))
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Logger.LogMessage("[UpdateChecker] Script dosyası oluşturuluyor.");
+                Logger.LogMessage($"Script dosyası oluşturuluyor.");
 
                 Console.ResetColor();
                 Directory.CreateDirectory("scripts");
                 Console.ForegroundColor = ConsoleColor.Green;
-                Logger.LogMessage("[UpdateChecker] Script dosyası içeriği oluşturuluyor.");
+                Logger.LogMessage($"Script dosyası içeriği oluşturuluyor.");
                 Console.ResetColor();
                 File.WriteAllText("scripts\\rustapp.txt", Properties.Resources.rustapp);
                 File.WriteAllText("scripts\\rustserver.txt", Properties.Resources.rustserver);
             }
             else
             {
-                Logger.LogMessage("[UpdateChecker] Script dosyası mevcut.");
+                Logger.LogMessage($"Script dosyası mevcut.");
                 if (!File.Exists("scripts\\rustapp.txt") && !File.Exists("scripts\\rustserver.txt"))
                 {
                     Console.ForegroundColor = ConsoleColor.Green;
-                    Logger.LogMessage("[UpdateChecker] Script dosyası içeriği oluşturuluyor.");
+                    Logger.LogMessage($"Script dosyası içeriği oluşturuluyor.");
                     Console.ResetColor();
                     File.WriteAllText("scripts\\rustapp.txt", Properties.Resources.rustapp);
                     File.WriteAllText("scripts\\rustserver.txt", Properties.Resources.rustserver);
                 }
                 else
                 {
-                    Logger.LogMessage("[UpdateChecker] Script dosya içeriği mevcut.");
+                    Logger.LogMessage($"Script dosya içeriği mevcut.");
                 }
             }
 
             if (!Directory.Exists("out"))
             {
                 Console.ForegroundColor = ConsoleColor.Green;
-                Logger.LogMessage("[UpdateChecker] Out dosyası oluşturuluyor.");
+                Logger.LogMessage($"Out dosyası oluşturuluyor.");
                 Console.ResetColor();
                 Directory.CreateDirectory("out");
             }
-            Logger.LogMessage("[UpdateChecker] Başlangıç değerleri alınıyor...");
+            Logger.LogMessage($"Başlangıç değerleri alınıyor...");
             while (true)
             {
                 GetRustVersionAsync_Starting("rustapp.txt");
-                Logger.LogMessage($"[UpdateChecker] Main_Public: {Main}");
+                Logger.LogMessage($"Main: {Main}");
 
                 GetRustVersionAsync_Starting("rustserver.txt");
-                Logger.LogMessage($"[UpdateChecker] Server_Public: {Server}");
+                Logger.LogMessage($"Server: {Server}");
 
-                if (IsValidVersion(Main) && IsValidVersion(Server)) break;
+                if (IsValidVersion(Main) && IsValidVersion(Server))
+                {
+                    break;
+                }
                 else
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Logger.LogMessage("[UpdateChecker] Geçersiz değer mevcut. Tekrarlanılıyor...");
+                    Logger.LogMessage($"Geçersiz değer mevcut. Tekrarlanılıyor...");
                     Console.ResetColor();
                 }
             }
 
             Console.ResetColor();
-            Logger.LogMessage("[UpdateChecker] Döngüye giriliyor...");
+            Logger.LogMessage($"Döngüye giriliyor...");
         }
 
         private static void GetRustVersionAsync(string scriptFileName, ref string OptArg1)
@@ -193,8 +206,14 @@ namespace RustUpdateNotes.UpdateClass
             {
                 process.Start();
                 process.WaitForExit();
-                if (scriptFileName == "rustapp.txt") OptArg1 = FindVersion(outputFileName, "public");
-                else if (scriptFileName == "rustserver.txt") OptArg1 = FindVersion(outputFileName, "public");
+                if (scriptFileName == "rustapp.txt")
+                {
+                    OptArg1 = FindVersion(outputFileName, "public");
+                }
+                else if (scriptFileName == "rustserver.txt")
+                {
+                    OptArg1 = FindVersion(outputFileName, "public");
+                }
             }
         }
 
@@ -219,8 +238,14 @@ namespace RustUpdateNotes.UpdateClass
                 process.Start();
                 process.WaitForExit();
 
-                if (scriptFileName == "rustapp.txt") Main = FindVersion(outputFileName, "public");
-                else if (scriptFileName == "rustserver.txt") Server = FindVersion(outputFileName, "public");
+                if (scriptFileName == "rustapp.txt")
+                {
+                    Main = FindVersion(outputFileName, "public");
+                }
+                else if (scriptFileName == "rustserver.txt")
+                {
+                    Server = FindVersion(outputFileName, "public");
+                }
             }
         }
 
@@ -229,29 +254,55 @@ namespace RustUpdateNotes.UpdateClass
             string fileContent = File.ReadAllText(path);
 
             int branchesStartIndex = fileContent.IndexOf("\"branches\"");
-            if (branchesStartIndex == -1) { Logger.LogMessage("branches cant found."); return null; }
+            if (branchesStartIndex == -1)
+            {
+                Logger.LogMessage($"branches cant found.");
+                return null;
+            }
             int startIndex = fileContent.IndexOf('{', branchesStartIndex);
             int endIndex = FindClosingBraceIndex(fileContent, startIndex);
-            if (startIndex == -1 || endIndex == -1) { Logger.LogMessage("cant parse branches section"); return null; }
+            if (startIndex == -1 || endIndex == -1)
+            {
+                Logger.LogMessage($"cant parse branches section.");
+                return null;
+            }
             string branchesSection = fileContent.Substring(startIndex, endIndex - startIndex + 1);
 
             int aux02StartIndex = branchesSection.IndexOf($"\"{branch}\"");
-            if (aux02StartIndex == -1) { Logger.LogMessage("minor branch cant found."); }
+            if (aux02StartIndex == -1)
+            {
+                Logger.LogMessage($"minor branch cant found.");
+            }
             startIndex = branchesSection.IndexOf('{', aux02StartIndex);
             endIndex = FindClosingBraceIndex(branchesSection, startIndex);
-            if (startIndex == -1 || endIndex == -1) { Logger.LogMessage("cant parse minor branch section"); return null; }
+            if (startIndex == -1 || endIndex == -1)
+            {
+                Logger.LogMessage($"cant parse minor branch section.");
+                return null;
+            }
+
             string aux02Section = branchesSection.Substring(startIndex, endIndex - startIndex + 1);
 
             string buildId = GetPropertyValue(aux02Section, "buildid");
-            if (buildId == null) { Logger.LogMessage("buildid cant found."); return null; }
-            else return buildId;
+            if (buildId == null)
+            {
+                Logger.LogMessage($"buildId null.");
+                return null;
+            }
+            else
+            {
+                return buildId;
+            }
         }
 
         private static string GetPropertyValue(string text, string propertyName)
         {
             string pattern = $"\"{propertyName}\"\\s*\"(.*?)\"";
             Match match = Regex.Match(text, pattern);
-            if (match.Success) return match.Groups[1].Value;
+            if (match.Success)
+            {
+                return match.Groups[1].Value;
+            }
             return null;
         }
 
@@ -260,8 +311,18 @@ namespace RustUpdateNotes.UpdateClass
             int braceCount = 0;
             for (int i = startIndex; i < text.Length; i++)
             {
-                if (text[i] == '{') { braceCount++; }
-                else if (text[i] == '}') { braceCount--; if (braceCount == 0) return i; }
+                if (text[i] == '{')
+                {
+                    braceCount++;
+                }
+                else if (text[i] == '}')
+                {
+                    braceCount--;
+                    if (braceCount == 0)
+                    {
+                        return i;
+                    }
+                }
             }
             return -1;
         }

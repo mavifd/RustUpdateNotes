@@ -7,7 +7,7 @@
     <ProjectGuid>{0465FA28-7E16-4EFB-B1C4-604F33332A14}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>RustUpdateNotes</RootNamespace>
-    <AssemblyName>RustUpdateNotes</AssemblyName>
+    <AssemblyName>Rust Update Notes</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -113,6 +113,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Main\Functions\Channel.cs" />
+    <Compile Include="Main\Functions\Commands.cs" />
     <Compile Include="Main\Functions\Commit.cs" />
     <Compile Include="Main\Functions\Responder.cs" />
     <Compile Include="Main\Helpers\Global.cs" />

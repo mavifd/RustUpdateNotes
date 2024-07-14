@@ -13,7 +13,6 @@ namespace RustUpdateNotes.ResponderClass
     {
         private static readonly List<string> updateKeys = new List<string> { "wipe", "güncelleme", "global", "update" };
         private static long nextUpdateTimeStamp = 0;
-
         public static async Task Responder_Runner()
         {
 
@@ -45,7 +44,10 @@ namespace RustUpdateNotes.ResponderClass
                 long TodayTimeStamp = ((DateTimeOffset)Today).ToUnixTimeSeconds();
 
                 DateTime Current = DateTime.Today;
-                while (Current.Day != 1) { Current = Current.AddDays(-1); }
+                while (Current.Day != 1)
+                {
+                    Current = Current.AddDays(-1);
+                }
                 Current = Current.AddDays((4 - (int)Current.DayOfWeek + 7) % 7);
                 Current = Current.AddHours(DayTimeHour);
 
@@ -64,9 +66,9 @@ namespace RustUpdateNotes.ResponderClass
                     ThisMonthFirstThursday = ThisMonthFirstThursday.AddHours(DayTimeHour);
                     nextUpdateTimeStamp = new DateTimeOffset(ThisMonthFirstThursday, TimeSpan.Zero).ToUnixTimeSeconds();
                 }
-                DateTimeOffset LocalTimeOffset = DateTimeOffset.FromUnixTimeSeconds(nextUpdateTimeStamp);
-                DateTime LocalTime = LocalTimeOffset.LocalDateTime;
-                Logger.LogMessage($"[Responder] Sonraki Güncelleme Tarihi: {LocalTime}");
+                DateTimeOffset TimeOffsetL = DateTimeOffset.FromUnixTimeSeconds(nextUpdateTimeStamp);
+                DateTime LocalTime = TimeOffsetL.LocalDateTime;
+                Logger.LogMessage($"Sonraki Güncelleme Tarihi: {LocalTime}");
 
                 EmbedBuilder embedBuilder = new EmbedBuilder()
                 .WithTitle(":information_source:  **Güncelleme Bilgisi**  :information_source:")
@@ -74,24 +76,40 @@ namespace RustUpdateNotes.ResponderClass
                 .WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj")
                 .AddField("Sonraki Güncelleme Tarihi:", $"<t:{nextUpdateTimeStamp}:F>", false)
                 .AddField("Sonraki Güncellemeye Kalan Zaman:", $"<t:{nextUpdateTimeStamp}:R>", false)
-                .WithColor(Discord.Color.Blue)
+                .WithColor(Color.Blue)
                 .WithFooter($"Son Güncelleme: {DateTime.Now:dd/MM HH:mm}");
                 var guildlist = Global.UpdateDateChannels.Keys.ToList();
                 foreach (var guildId in guildlist)
                 {
                     var guild = Global.Client.GetGuild(guildId);
-                    if (guild == null) continue;
+                    if (guild == null)
+                    {
+                        continue;
+                    }
                     var channelids = Global.UpdateDateChannels[guildId].ToList();
                     foreach (var channelId in channelids)
                     {
                         var channel = guild.GetTextChannel(channelId);
-                        if (channel == null) continue;
+                        if (channel == null)
+                        {
+                            continue;
+                        }
                         var testr = await Logger.CheckBotPerms(guild);
-                        if (!await Logger.CheckBotPerms(guild) || !await Logger.CheckChannelPerms(channel)) { Logger.LogMessage($"Güncelleme Tarihi Yetki Yetersizliği | Guild: {guild.Name}"); continue; };
+                        if (!await Logger.CheckBotPerms(guild) || !await Logger.CheckChannelPerms(channel))
+                        {
+                            Logger.LogMessage($"Güncelleme Tarihi Yetki Yetersizliği | Guild: {guild.Name}");
+                            continue;
+                        };
                         var messages = await channel.GetMessagesAsync(limit: 1).FlattenAsync();
                         var lastMessage = messages.FirstOrDefault() is IUserMessage userMessage ? userMessage : null;
-                        if (lastMessage != null && lastMessage.Author.Id == Global.Client.CurrentUser.Id) await lastMessage.ModifyAsync(msg => msg.Embed = embedBuilder.Build());
-                        else await channel.SendMessageAsync("", false, embedBuilder.Build());
+                        if (lastMessage != null && lastMessage.Author.Id == Global.Client.CurrentUser.Id)
+                        {
+                            await lastMessage.ModifyAsync(msg => msg.Embed = embedBuilder.Build());
+                        }
+                        else
+                        {
+                            await channel.SendMessageAsync("", false, embedBuilder.Build());
+                        }
                     }
                 }
             }
@@ -106,26 +124,26 @@ namespace RustUpdateNotes.ResponderClass
         {
             try
             {
-                if (message.Channel.Id == Global.MainDiscordSohbet)
+
+                IUser user = message.Author;
+                string userTag = $"{user.Mention}";
+
+                if (message.Channel.Id != Global.MainDiscordSohbet || message.Author.Id == Global.Client.CurrentUser.Id || !updateKeys.Any(keyword => message.Content.ToLower().Contains(keyword)))
                 {
-                    IUser user = message.Author;
-                    string userTag = $"{user.Mention}";
-                    if (message.Author.Id == Global.Client.CurrentUser.Id) return;
-                    if (updateKeys.Any(keyword => message.Content.ToLower().Contains(keyword)))
-                    {
-                        Logger.LogMessage("[Responder] Güncelleme sorusu cevaplanıyor...");
-                        EmbedBuilder embedBuilder = new EmbedBuilder()
-                        .WithTitle(":information_source:  **Güncelleme Bilgisi**  :information_source:")
-                        .WithDescription("Her ayın ilk perşembesi (Yaz Dönemi 21:00 - Kış Dönemi 22:00) gelen güncelleme ile tüm sunuculara **Zorunlu Harita Sıfırlaması** atılır.\n**BP Sıfırlaması**(Blueprint/Öğrenilen Eşyalar) ise sunucu sahibinin isteğine bağlıdır.")
-                        .WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj")
-                        .WithFooter(DateTime.Now.ToString(), "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no")
-                        .AddField("Sonraki Güncelleme Tarihi:", $"<t:{nextUpdateTimeStamp}:F>", false)
-                        .AddField("Sonraki Güncellemeye Kalan Zaman:", $"<t:{nextUpdateTimeStamp}:R>", false)
-                        .AddField("Soran Kullanıcı", userTag, false)
-                        .WithColor(Color.Blue);
-                        await message.Channel.SendMessageAsync("", false, embedBuilder.Build());
-                    }
+                    return;
                 }
+
+                Logger.LogMessage("Güncelleme sorusu cevaplanıyor...");
+                EmbedBuilder embedBuilder = new EmbedBuilder()
+                .WithTitle(":information_source:  **Güncelleme Bilgisi**  :information_source:")
+                .WithDescription("Her ayın ilk perşembesi (Yaz Dönemi 21:00 - Kış Dönemi 22:00) gelen güncelleme ile tüm sunuculara **Zorunlu Harita Sıfırlaması** atılır.\n**BP Sıfırlaması**(Blueprint/Öğrenilen Eşyalar) ise sunucu sahibinin isteğine bağlıdır.")
+                .WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj")
+                .WithFooter(DateTime.Now.ToString(), "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no")
+                .AddField("Sonraki Güncelleme Tarihi:", $"<t:{nextUpdateTimeStamp}:F>", false)
+                .AddField("Sonraki Güncellemeye Kalan Zaman:", $"<t:{nextUpdateTimeStamp}:R>", false)
+                .AddField("Soran Kullanıcı", userTag, false)
+                .WithColor(Color.Blue);
+                await message.Channel.SendMessageAsync("", false, embedBuilder.Build());
             }
             catch (Exception ex)
             {
