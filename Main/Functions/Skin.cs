@@ -31,11 +31,11 @@ namespace RustUpdateNotes.SkinClass
                 var completedTask = await Task.WhenAny(maintask, controltask);
                 if (completedTask == maintask)
                 {
-                    Global.SkinRunner_Succes++;
+                    Global.Skin_Succes++;
                 }
                 else
                 {
-                    Global.SkinRunner_Fail++;
+                    Global.Skin_Fail++;
                     Logger.LogMessage($"SkinRunner Timeout (5 minute)");
                     await Logger.DiscordMessage($"SkinRunner Timeout (5 minute)", true);
                 }

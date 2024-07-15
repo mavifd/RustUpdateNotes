@@ -25,17 +25,17 @@ namespace RustUpdateNotes.GlobalClass
         public static Dictionary<ulong, List<ulong>> StoreCheckerChannels = new Dictionary<ulong, List<ulong>>();
         public static Dictionary<ulong, List<ulong>> CommitFollowerChannels = new Dictionary<ulong, List<ulong>>();
 
-        public static int ChannelRunner_Succes = 0;
-        public static int CommitRunner_Succes = 0;
-        public static int SkinRunner_Succes = 0;
-        public static int UpdateRunner_Succes = 0;
-        public static int UpdateMessageRunner_Succes = 0;
+        public static int Channel_Succes = 0;
+        public static int Commit_Succes = 0;
+        public static int Skin_Succes = 0;
+        public static int Update_Succes = 0;
+        public static int Responder_Succes = 0;
 
-        public static int ChannelRunner_Fail = 0;
-        public static int CommitRunner_Fail = 0;
-        public static int SkinRunner_Fail = 0;
-        public static int UpdateRunner_Fail = 0;
-        public static int UpdateMessageRunner_Fail = 0;
+        public static int Channel_Fail = 0;
+        public static int Commit_Fail = 0;
+        public static int Skin_Fail = 0;
+        public static int Update_Fail = 0;
+        public static int Responder_Fail = 0;
 
         public static int AppRunTime = 0;
 

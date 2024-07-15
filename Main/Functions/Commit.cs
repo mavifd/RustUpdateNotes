@@ -28,11 +28,11 @@ namespace RustUpdateNotes.CommitClass
                 var completedTask = await Task.WhenAny(maintask, controltask);
                 if (completedTask == maintask)
                 {
-                    Global.CommitRunner_Succes++;
+                    Global.Commit_Succes++;
                 }
                 else
                 {
-                    Global.CommitRunner_Fail++;
+                    Global.Commit_Fail++;
                     Logger.LogMessage($"CommitRunner Timeout (5 minute)");
                     await Logger.DiscordMessage($"CommitRunner Timeout (5 minute)", true);
                 }
@@ -96,18 +96,16 @@ namespace RustUpdateNotes.CommitClass
                 foreach (var commit in differences)
                 {
                     Color commitcolor = Color.Blue;
-                    string committitle = commit.Branch;
                     if (commit.Message.IndexOf("merge", StringComparison.OrdinalIgnoreCase) >= 0)
                     {
-                        commitcolor = Color.Red;
-                        committitle = $"{commit.Branch} | **Merge**";
+                        commitcolor = Color.Gold;
                     }
 
                     Logger.LogMessage($"New Commit: {commit.Changeset}");
                     var commitlink = "https://commits.facepunch.com/" + commit.Id;
                     EmbedBuilder newEmbedBuilder = new EmbedBuilder()
                     .WithAuthor(commit.User.Name, commit.User.Avatar)
-                    .WithTitle(committitle)
+                    .WithTitle(commit.Branch)
                     .WithDescription(commit.Message)
                     .WithUrl(commitlink)
                     .WithColor(commitcolor)

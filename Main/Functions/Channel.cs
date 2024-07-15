@@ -20,11 +20,11 @@ namespace RustUpdateNotes.ChannelClass
                 var completedTask = await Task.WhenAny(maintask, controltask);
                 if (completedTask == maintask)
                 {
-                    Global.ChannelRunner_Succes++;
+                    Global.Channel_Succes++;
                 }
                 else
                 {
-                    Global.ChannelRunner_Fail++;
+                    Global.Channel_Fail++;
                     Logger.LogMessage($"InitChannelRunner Timeout (5 minute)");
                     await Logger.DiscordMessage($"InitChannelRunner Timeout (5 minute)", true);
                 }
@@ -65,7 +65,7 @@ namespace RustUpdateNotes.ChannelClass
                     for (int i = 0; i < channelNames.Length; i++)
                     {
                         string channelName = channelNames[i];
-                        if (CurrentGuild.Id == Global.MainDiscordID && channelName == "güncelleme-notları┃📋")
+                        if (CurrentGuild.Id == Global.MainDiscordID && (channelName == "güncelleme-notları┃📋" || channelName == "güncelleme-tarihi┃📅"))
                         {
                             continue;
                         }

@@ -23,11 +23,11 @@ namespace RustUpdateNotes.ResponderClass
                 var completedTask = await Task.WhenAny(maintask, controltask);
                 if (completedTask == maintask)
                 {
-                    Global.UpdateMessageRunner_Succes++;
+                    Global.Responder_Succes++;
                 }
                 else
                 {
-                    Global.UpdateMessageRunner_Fail++;
+                    Global.Responder_Fail++;
                     Logger.LogMessage($"UpdateMessageRunner Timeout (5 minute)");
                     await Logger.DiscordMessage($"UpdateMessageRunner Timeout (5 minute)", true);
                 }
@@ -72,7 +72,7 @@ namespace RustUpdateNotes.ResponderClass
 
                 EmbedBuilder embedBuilder = new EmbedBuilder()
                 .WithTitle(":information_source:  **Güncelleme Bilgisi**  :information_source:")
-                .WithDescription("Her ayın ilk perşembesi (Yaz Dönemi 21:00 - Kış Dönemi 22:00) gelen güncelleme ile tüm sunuculara **Zorunlu Harita Sıfırlaması** atılır.\n**BP Sıfırlaması**(Blueprint/Öğrenilen Eşyalar) ise sunucu sahibinin isteğine bağlıdır.")
+                .WithDescription("Her ayın ilk Perşembesi (Yaz 21:00 • Kış 22:00) gelen güncelleme ile tüm sunuculara **Zorunlu Harita Wipe** atılır.\n**BP Wipe**, sunucu sahibinin isteğine bağlıdır.")
                 .WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj")
                 .AddField("Sonraki Güncelleme Tarihi:", $"<t:{nextUpdateTimeStamp}:F>", false)
                 .AddField("Sonraki Güncellemeye Kalan Zaman:", $"<t:{nextUpdateTimeStamp}:R>", false)
@@ -138,7 +138,7 @@ namespace RustUpdateNotes.ResponderClass
                 .WithTitle(":information_source:  **Güncelleme Bilgisi**  :information_source:")
                 .WithDescription("Her ayın ilk perşembesi (Yaz Dönemi 21:00 - Kış Dönemi 22:00) gelen güncelleme ile tüm sunuculara **Zorunlu Harita Sıfırlaması** atılır.\n**BP Sıfırlaması**(Blueprint/Öğrenilen Eşyalar) ise sunucu sahibinin isteğine bağlıdır.")
                 .WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj")
-                .WithFooter(DateTime.Now.ToString(), "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no")
+                .WithFooter($"{DateTime.Now:dd/MM HH:mm}", "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no")
                 .AddField("Sonraki Güncelleme Tarihi:", $"<t:{nextUpdateTimeStamp}:F>", false)
                 .AddField("Sonraki Güncellemeye Kalan Zaman:", $"<t:{nextUpdateTimeStamp}:R>", false)
                 .AddField("Soran Kullanıcı", userTag, false)

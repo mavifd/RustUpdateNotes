@@ -1,7 +1,9 @@
 ﻿using Discord;
 using Discord.WebSocket;
+using RustUpdateNotes.CommitClass;
 using RustUpdateNotes.GlobalClass;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -17,12 +19,19 @@ namespace RustUpdateNotes.LoggerClass
             {
                 try
                 {
-                    await DiscordMessage($"**Runtime:** {(Global.AppRunTime * 60) / 60}" +
-                   $"\n **Channel_Runner:** {Global.ChannelRunner_Succes} - {Global.ChannelRunner_Fail}" +
-                   $"\n **Commit_Runner:** {Global.CommitRunner_Succes} - {Global.CommitRunner_Fail}" +
-                   $"\n **Skin_Runner:** {Global.SkinRunner_Succes} - {Global.SkinRunner_Fail}" +
-                   $"\n **Update_Runner:** {Global.UpdateRunner_Succes} - {Global.UpdateRunner_Fail}" +
-                   $"\n **UpdateMessage_Runner:** {Global.UpdateMessageRunner_Succes} - {Global.UpdateMessageRunner_Fail}");
+                    EmbedBuilder embedBuilder = new EmbedBuilder()
+               .WithTitle(":shield:  **Rust Update Notes**  :shield:")
+               .WithDescription($"{Global.AppRunTime} Saatlik Rapor.\n" +
+               $"\n**Channel:** {Global.Channel_Succes} - {Global.Channel_Fail}" +
+               $"\n**Commit:** {Global.Commit_Succes} - {Global.Commit_Fail}" +
+               $"\n**Skin:** {Global.Skin_Succes} - {Global.Skin_Fail}" +
+               $"\n**Update:** {Global.Update_Succes} - {Global.Update_Fail}" +
+               $"\n**Responder:** {Global.Responder_Succes} - {Global.Responder_Fail}")
+               .WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj")
+               .WithFooter($"{DateTime.Now:dd/MM HH:mm}")
+               .WithColor(Color.Blue);
+
+                    await Global.DiscordLog.SendMessageAsync(text: "", embeds: new Embed[] { embedBuilder.Build() });
                     Global.AppRunTime++;
                 }
                 catch (Exception ex)
