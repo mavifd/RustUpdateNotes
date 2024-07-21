@@ -21,7 +21,7 @@ namespace RustUpdateNotes.ResponderClass
                 var maintask = CheckUpdateDate();
                 var controltask = Task.Delay(TimeSpan.FromMinutes(5));
                 var completedTask = await Task.WhenAny(maintask, controltask);
-                if (completedTask == maintask)
+                if (completedTask != maintask)
                 {
                     Logger.LogMessage($"UpdateMessageRunner Timeout (5 minute)");
                     await Logger.DiscordMessage($"UpdateMessageRunner Timeout (5 minute)", true);

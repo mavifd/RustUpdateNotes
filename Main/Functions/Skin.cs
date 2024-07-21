@@ -29,7 +29,7 @@ namespace RustUpdateNotes.SkinClass
                 var maintask = CheckSkin();
                 var controltask = Task.Delay(TimeSpan.FromMinutes(5));
                 var completedTask = await Task.WhenAny(maintask, controltask);
-                if (completedTask == maintask)
+                if (completedTask != maintask)
                 {
                     Logger.LogMessage($"SkinRunner Timeout (5 minute)");
                     await Logger.DiscordMessage($"SkinRunner Timeout (5 minute)", true);
