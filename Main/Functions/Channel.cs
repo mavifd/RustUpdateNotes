@@ -18,13 +18,8 @@ namespace RustUpdateNotes.ChannelClass
                 var maintask = CheckChannels();
                 var controltask = Task.Delay(TimeSpan.FromMinutes(5));
                 var completedTask = await Task.WhenAny(maintask, controltask);
-                if (completedTask == maintask)
+                if (completedTask != maintask)
                 {
-                    Global.Channel_Succes++;
-                }
-                else
-                {
-                    Global.Channel_Fail++;
                     Logger.LogMessage($"InitChannelRunner Timeout (5 minute)");
                     await Logger.DiscordMessage($"InitChannelRunner Timeout (5 minute)", true);
                 }
@@ -114,7 +109,6 @@ namespace RustUpdateNotes.ChannelClass
                                     catch (Exception)
                                     {
                                         Logger.LogMessage($"Güncelleme notları takip edilemedi. | {CurrentGuild.Name}");
-                                        await Logger.DiscordMessage($"Güncelleme notları takip edilemedi. | {CurrentGuild.Name}");
                                         await newChannel.SendMessageAsync("Güncelleme notları bir sorundan dolayı takip edilemedi.\nhttps://discord.com/channels/1223037877911556107/1223058873573969920 buradan kendiniz **Takip Et** diyerek ekleyebilirsiniz.");
                                     }
                                     break;

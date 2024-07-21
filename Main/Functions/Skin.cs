@@ -31,11 +31,6 @@ namespace RustUpdateNotes.SkinClass
                 var completedTask = await Task.WhenAny(maintask, controltask);
                 if (completedTask == maintask)
                 {
-                    Global.Skin_Succes++;
-                }
-                else
-                {
-                    Global.Skin_Fail++;
                     Logger.LogMessage($"SkinRunner Timeout (5 minute)");
                     await Logger.DiscordMessage($"SkinRunner Timeout (5 minute)", true);
                 }
@@ -69,8 +64,8 @@ namespace RustUpdateNotes.SkinClass
                 List<SkinItem> skinData = ParseSkins(response);
                 if (skinData == null || skinData.Count == 0)
                 {
-                    Logger.LogMessage($"skinData null.");
-                    await Logger.DiscordMessage($"skinData null.", true);
+                    Logger.LogMessage($"skinData null. (Skinler güncelleniyor olabilir.)");
+                    await Logger.DiscordMessage($"skinData null. (Skinler güncelleniyor olabilir.)");
                     return;
                 }
 
@@ -97,7 +92,7 @@ namespace RustUpdateNotes.SkinClass
                     if (ourimage == null)
                     {
                         Logger.LogMessage($"ourimage null.");
-                        await Logger.DiscordMessage($"ourimage null.",true);
+                        await Logger.DiscordMessage($"ourimage null.", true);
                         return;
                     }
 

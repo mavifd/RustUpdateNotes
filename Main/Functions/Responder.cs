@@ -23,11 +23,6 @@ namespace RustUpdateNotes.ResponderClass
                 var completedTask = await Task.WhenAny(maintask, controltask);
                 if (completedTask == maintask)
                 {
-                    Global.Responder_Succes++;
-                }
-                else
-                {
-                    Global.Responder_Fail++;
                     Logger.LogMessage($"UpdateMessageRunner Timeout (5 minute)");
                     await Logger.DiscordMessage($"UpdateMessageRunner Timeout (5 minute)", true);
                 }

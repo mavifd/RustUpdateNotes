@@ -26,13 +26,8 @@ namespace RustUpdateNotes.CommitClass
                 var maintask = CheckForNewCommits();
                 var controltask = Task.Delay(TimeSpan.FromMinutes(5));
                 var completedTask = await Task.WhenAny(maintask, controltask);
-                if (completedTask == maintask)
+                if (completedTask != maintask)
                 {
-                    Global.Commit_Succes++;
-                }
-                else
-                {
-                    Global.Commit_Fail++;
                     Logger.LogMessage($"CommitRunner Timeout (5 minute)");
                     await Logger.DiscordMessage($"CommitRunner Timeout (5 minute)", true);
                 }
@@ -98,7 +93,7 @@ namespace RustUpdateNotes.CommitClass
                     Color commitcolor = Color.Blue;
                     if (commit.Message.IndexOf("merge", StringComparison.OrdinalIgnoreCase) >= 0)
                     {
-                        commitcolor = Color.Gold;
+                        commitcolor = Color.Green;
                     }
 
                     Logger.LogMessage($"New Commit: {commit.Changeset}");

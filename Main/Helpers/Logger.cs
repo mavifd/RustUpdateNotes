@@ -15,24 +15,19 @@ namespace RustUpdateNotes.LoggerClass
 
         public static async Task AppLog_Runner()
         {
+            int AppRunTime = 0;
             while (true)
             {
                 try
                 {
                     EmbedBuilder embedBuilder = new EmbedBuilder()
                .WithTitle(":shield:  **Rust Update Notes**  :shield:")
-               .WithDescription($"{Global.AppRunTime} Saatlik Rapor.\n" +
-               $"\n**Channel:** {Global.Channel_Succes} - {Global.Channel_Fail}" +
-               $"\n**Commit:** {Global.Commit_Succes} - {Global.Commit_Fail}" +
-               $"\n**Skin:** {Global.Skin_Succes} - {Global.Skin_Fail}" +
-               $"\n**Update:** {Global.Update_Succes} - {Global.Update_Fail}" +
-               $"\n**Responder:** {Global.Responder_Succes} - {Global.Responder_Fail}")
+               .WithDescription($"{AppRunTime} saattir çalışıyor.\n")
                .WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj")
                .WithFooter($"{DateTime.Now:dd/MM HH:mm}")
                .WithColor(Color.Blue);
-
                     await Global.DiscordLog.SendMessageAsync(text: "", embeds: new Embed[] { embedBuilder.Build() });
-                    Global.AppRunTime++;
+                    AppRunTime++;
                 }
                 catch (Exception ex)
                 {

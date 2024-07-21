@@ -6,10 +6,7 @@ namespace RustUpdateNotes.GlobalClass
 {
     public static class Global
     {
-        //MTExMTAxNjg2MDc0NjUzMDgzNg.G5Tmp_.pk-mcC5NNneSCwWOZuvFwOzovem4rieLdLKT3k     ##  MAIN BOT TOKEN
-        //MTI1Mjk3NTk2ODczODYxMTIyMQ.GPpLCI.NCh6GXsJ2096u8M9kbvAyQY-lEimBPADuQNWb8     ##  TEST BOT TOKEN
-
-        public static readonly string Token = "MTExMTAxNjg2MDc0NjUzMDgzNg.G5Tmp_.pk-mcC5NNneSCwWOZuvFwOzovem4rieLdLKT3k"; // MAIN BOT TOKEN
+        public static readonly string Token = "MTExMTAxNjg2MDc0NjUzMDgzNg.G5Tmp_.pk-mcC5NNneSCwWOZuvFwOzovem4rieLdLKT3k"; 
 
         public static DiscordSocketClient Client;
 
@@ -24,20 +21,6 @@ namespace RustUpdateNotes.GlobalClass
         public static Dictionary<ulong, List<ulong>> UpdateTrackerChannels = new Dictionary<ulong, List<ulong>>();
         public static Dictionary<ulong, List<ulong>> StoreCheckerChannels = new Dictionary<ulong, List<ulong>>();
         public static Dictionary<ulong, List<ulong>> CommitFollowerChannels = new Dictionary<ulong, List<ulong>>();
-
-        public static int Channel_Succes = 0;
-        public static int Commit_Succes = 0;
-        public static int Skin_Succes = 0;
-        public static int Update_Succes = 0;
-        public static int Responder_Succes = 0;
-
-        public static int Channel_Fail = 0;
-        public static int Commit_Fail = 0;
-        public static int Skin_Fail = 0;
-        public static int Update_Fail = 0;
-        public static int Responder_Fail = 0;
-
-        public static int AppRunTime = 0;
 
         public static bool BotReady = false;
     }

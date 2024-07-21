@@ -25,11 +25,6 @@ namespace RustUpdateNotes.UpdateClass
                 var completedTask = await Task.WhenAny(maintask, controltask);
                 if (completedTask == maintask)
                 {
-                    Global.Update_Succes++;
-                }
-                else
-                {
-                    Global.Update_Fail++;
                     Logger.LogMessage($"UpdateRunner Timeout (5 minute)");
                     await Logger.DiscordMessage($"UpdateRunner Timeout (5 minute)", true);
                 }
