@@ -36,7 +36,6 @@ namespace RustUpdateNotes.UpdateClass
         {
             try
             {
-
                 if (string.IsNullOrEmpty(Main) || string.IsNullOrEmpty(Server))
                 {
                     Logger.LogMessage($"Main/Server null or empty. Getting version numbers...");

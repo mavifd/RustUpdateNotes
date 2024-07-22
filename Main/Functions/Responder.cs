@@ -13,9 +13,9 @@ namespace RustUpdateNotes.ResponderClass
     {
         private static readonly List<string> updateKeys = new List<string> { "wipe", "güncelleme", "global", "update" };
         private static long nextUpdateTimeStamp = 0;
+
         public static async Task Responder_Runner()
         {
-
             while (true)
             {
                 var maintask = CheckUpdateDate();
@@ -119,7 +119,6 @@ namespace RustUpdateNotes.ResponderClass
         {
             try
             {
-
                 IUser user = message.Author;
                 string userTag = $"{user.Mention}";
 
@@ -133,7 +132,7 @@ namespace RustUpdateNotes.ResponderClass
                 .WithTitle(":information_source:  **Güncelleme Bilgisi**  :information_source:")
                 .WithDescription("Her ayın ilk perşembesi (Yaz Dönemi 21:00 - Kış Dönemi 22:00) gelen güncelleme ile tüm sunuculara **Zorunlu Harita Sıfırlaması** atılır.\n**BP Sıfırlaması**(Blueprint/Öğrenilen Eşyalar) ise sunucu sahibinin isteğine bağlıdır.")
                 .WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj")
-                .WithFooter($"{DateTime.Now:dd/MM HH:mm}", "https://lh3.googleusercontent.com/a/ACg8ocJveuYqbU6KTFvsKpkmNLtB35Gd8-fsAbZzu3JVknZGDw=s288-c-no")
+                .WithFooter($"{DateTime.Now:dd/MM HH:mm}")
                 .AddField("Sonraki Güncelleme Tarihi:", $"<t:{nextUpdateTimeStamp}:F>", false)
                 .AddField("Sonraki Güncellemeye Kalan Zaman:", $"<t:{nextUpdateTimeStamp}:R>", false)
                 .AddField("Soran Kullanıcı", userTag, false)

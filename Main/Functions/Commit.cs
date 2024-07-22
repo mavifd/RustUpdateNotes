@@ -66,17 +66,12 @@ namespace RustUpdateNotes.CommitClass
                 if (storedCommits.Count == 0)
                 {
                     storedCommits.AddRange(newCommits);
-                    Logger.LogMessage($"Commit first run.");
                     return;
                 }
 
-
                 Logger.LogMessage($"Latests: " +
-                       $"{commitData.Results[0].Id}/{commitData.Results[0].Changeset}, " +
-                       $"{commitData.Results[1].Id}/{commitData.Results[1].Changeset}, " +
-                       $"{commitData.Results[2].Id}/{commitData.Results[2].Changeset} | " +
+                       $"{commitData.Results[0].Id}/{commitData.Results[0].Changeset} | " +
                        $"Stored: {storedCommits.Count} (N:{newCommits.Count}) - Sended: {sentCommits.Count}");
-
 
                 var differences = commitData.Results
                 .Where(commit => !storedCommits.Contains(commit.Id) && !sentCommits.Contains(commit.Id))

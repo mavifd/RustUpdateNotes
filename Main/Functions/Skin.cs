@@ -22,6 +22,7 @@ namespace RustUpdateNotes.SkinClass
         private static HttpClient httpClient = new HttpClient();
 
         private static readonly string skinApiUrl = "https://store.steampowered.com/itemstore/252490/browse/?filter=Limited";
+
         public static async Task Skin_Runner()
         {
             while (true)
@@ -78,9 +79,7 @@ namespace RustUpdateNotes.SkinClass
 
                 if (storedSkins.Count == 0)
                 {
-                    storedSkins.Clear();
                     storedSkins.UnionWith(newSkins);
-                    Logger.LogMessage($"skinData first run.");
                     return;
                 }
 

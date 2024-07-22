@@ -1,17 +1,16 @@
-﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Discord;
+﻿using Discord;
 using Discord.WebSocket;
 using RustUpdateNotes.ChannelClass;
+using RustUpdateNotes.CommandClass;
 using RustUpdateNotes.CommitClass;
 using RustUpdateNotes.GlobalClass;
 using RustUpdateNotes.LoggerClass;
 using RustUpdateNotes.ResponderClass;
 using RustUpdateNotes.SkinClass;
 using RustUpdateNotes.UpdateClass;
-using RustUpdateNotes.CommandClass;
-
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace RustUpdateNotes
 {
@@ -28,7 +27,7 @@ namespace RustUpdateNotes
             Global.Client = new DiscordSocketClient(new DiscordSocketConfig { GatewayIntents = GatewayIntents.All });
 
             Global.Client.Log += Logger.Log;
-            Global.Client.JoinedGuild += OnJoinedGuild;
+            Global.Client.JoinedGuild += Channel.OnJoinedGuild;
             Global.Client.MessageReceived += Responder.MessageReceived;
             Global.Client.Ready += Command.BotReady;
             Global.Client.SlashCommandExecuted += Command.SlashCommandHandler;
@@ -52,11 +51,6 @@ namespace RustUpdateNotes
             Logger.LogMessage("All done!");
 
             await Task.Delay(Timeout.Infinite);
-        }
-
-        private async Task OnJoinedGuild(SocketGuild guild)
-        {
-            await Channel.CheckChannels();
         }
     }
 }

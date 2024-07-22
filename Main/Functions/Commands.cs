@@ -1,5 +1,5 @@
-﻿using Discord.WebSocket;
-using Discord;
+﻿using Discord;
+using Discord.WebSocket;
 using RustUpdateNotes.GlobalClass;
 using RustUpdateNotes.LoggerClass;
 using System;
@@ -10,7 +10,6 @@ namespace RustUpdateNotes.CommandClass
 {
     public static class Command
     {
-
         public static async Task BotReady()
         {
             Global.BotReady = true;

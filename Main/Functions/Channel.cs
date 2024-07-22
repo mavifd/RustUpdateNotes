@@ -26,6 +26,7 @@ namespace RustUpdateNotes.ChannelClass
                 await Task.Delay(TimeSpan.FromHours(1));
             }
         }
+
         public static async Task CheckChannels()
         {
             try
@@ -147,6 +148,11 @@ namespace RustUpdateNotes.ChannelClass
                 Logger.LogMessage($"Error - Channel: {ex}");
                 await Logger.DiscordMessage($"Error - Channel: {ex}", true);
             }
+        }
+
+        public static async Task OnJoinedGuild(SocketGuild guild)
+        {
+            await CheckChannels();
         }
     }
 }

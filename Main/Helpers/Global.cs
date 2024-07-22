@@ -6,7 +6,7 @@ namespace RustUpdateNotes.GlobalClass
 {
     public static class Global
     {
-        public static readonly string Token = "MTExMTAxNjg2MDc0NjUzMDgzNg.G5Tmp_.pk-mcC5NNneSCwWOZuvFwOzovem4rieLdLKT3k"; 
+        public static readonly string Token = "MTExMTAxNjg2MDc0NjUzMDgzNg.G5Tmp_.pk-mcC5NNneSCwWOZuvFwOzovem4rieLdLKT3k";
 
         public static DiscordSocketClient Client;
 

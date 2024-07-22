@@ -1,9 +1,7 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using RustUpdateNotes.CommitClass;
 using RustUpdateNotes.GlobalClass;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -12,28 +10,21 @@ namespace RustUpdateNotes.LoggerClass
 {
     public static class Logger
     {
-
         public static async Task AppLog_Runner()
         {
-            int AppRunTime = 0;
             while (true)
             {
                 try
                 {
                     EmbedBuilder embedBuilder = new EmbedBuilder()
-               .WithTitle(":shield:  **Rust Update Notes**  :shield:")
-               .WithDescription($"{AppRunTime} saattir çalışıyor.\n")
-               .WithThumbnailUrl("https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj")
-               .WithFooter($"{DateTime.Now:dd/MM HH:mm}")
-               .WithColor(Color.Blue);
+                   .WithAuthor($"Rust Update Notes | {DateTime.Now:dd/MM HH:mm}", "https://yt3.googleusercontent.com/HPu-kTkwgN4mPxO6_PJThrtbPQEL_esHXjbPVp7bR5SF3H0HX_p6ub960hiH-D5WiDtPTosOXw=s176-c-k-c0x00ffffff-no-rj")
+                   .WithColor(Color.Blue);
                     await Global.DiscordLog.SendMessageAsync(text: "", embeds: new Embed[] { embedBuilder.Build() });
-                    AppRunTime++;
                 }
                 catch (Exception ex)
                 {
                     await DiscordMessage($"AppLog_Runner send message failed. {ex}");
                 }
-
                 await Task.Delay(TimeSpan.FromHours(1));
             }
         }
@@ -57,22 +48,27 @@ namespace RustUpdateNotes.LoggerClass
                     prefix = "[Channel] ";
                     prefixColor = ConsoleColor.Cyan;
                     break;
+
                 case 2:
                     prefix = "[Command] ";
                     prefixColor = ConsoleColor.Green;
                     break;
+
                 case 3:
                     prefix = "[Commit] ";
                     prefixColor = ConsoleColor.Yellow;
                     break;
+
                 case 4:
                     prefix = "[Responder] ";
                     prefixColor = ConsoleColor.Magenta;
                     break;
+
                 case 5:
                     prefix = "[Skin] ";
                     prefixColor = ConsoleColor.Blue;
                     break;
+
                 case 6:
                     prefix = "[Update] ";
                     prefixColor = ConsoleColor.White;
