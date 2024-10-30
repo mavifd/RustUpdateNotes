@@ -22,6 +22,8 @@ namespace RustUpdateNotes.GlobalClass
         public static Dictionary<ulong, List<ulong>> StoreCheckerChannels = new Dictionary<ulong, List<ulong>>();
         public static Dictionary<ulong, List<ulong>> CommitFollowerChannels = new Dictionary<ulong, List<ulong>>();
 
+        public static int DayTimeHour = 19; //18 YAZ, 19 KIŞ.
+
         public static bool BotReady = false;
     }
 }

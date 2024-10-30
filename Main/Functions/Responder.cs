@@ -34,8 +34,8 @@ namespace RustUpdateNotes.ResponderClass
         {
             try
             {
-                int DayTimeHour = 18; //18 YAZ, 19 KIŞ.
-                DateTime Today = DateTime.Today.AddHours(DayTimeHour); ;
+                int CurrDayTimeHour = Global.DayTimeHour;
+                DateTime Today = DateTime.Today.AddHours(CurrDayTimeHour); ;
                 long TodayTimeStamp = ((DateTimeOffset)Today).ToUnixTimeSeconds();
 
                 DateTime Current = DateTime.Today;
@@ -44,21 +44,21 @@ namespace RustUpdateNotes.ResponderClass
                     Current = Current.AddDays(-1);
                 }
                 Current = Current.AddDays((4 - (int)Current.DayOfWeek + 7) % 7);
-                Current = Current.AddHours(DayTimeHour);
+                Current = Current.AddHours(CurrDayTimeHour);
 
                 long FirstThursdayTimeStamp = ((DateTimeOffset)Current).ToUnixTimeSeconds();
                 if (TodayTimeStamp > FirstThursdayTimeStamp)
                 {
                     DateTime NextMonthFirstThursday = new DateTime(Today.Year, Today.Month, 1).AddMonths(1);
                     while (NextMonthFirstThursday.DayOfWeek != DayOfWeek.Thursday) { NextMonthFirstThursday = NextMonthFirstThursday.AddDays(1); }
-                    NextMonthFirstThursday = NextMonthFirstThursday.AddHours(DayTimeHour);
+                    NextMonthFirstThursday = NextMonthFirstThursday.AddHours(CurrDayTimeHour);
                     nextUpdateTimeStamp = new DateTimeOffset(NextMonthFirstThursday, TimeSpan.Zero).ToUnixTimeSeconds();
                 }
                 else
                 {
                     DateTime ThisMonthFirstThursday = new DateTime(Today.Year, Today.Month, 1);
                     while (ThisMonthFirstThursday.DayOfWeek != DayOfWeek.Thursday) { ThisMonthFirstThursday = ThisMonthFirstThursday.AddDays(1); }
-                    ThisMonthFirstThursday = ThisMonthFirstThursday.AddHours(DayTimeHour);
+                    ThisMonthFirstThursday = ThisMonthFirstThursday.AddHours(CurrDayTimeHour);
                     nextUpdateTimeStamp = new DateTimeOffset(ThisMonthFirstThursday, TimeSpan.Zero).ToUnixTimeSeconds();
                 }
                 DateTimeOffset TimeOffsetL = DateTimeOffset.FromUnixTimeSeconds(nextUpdateTimeStamp);
