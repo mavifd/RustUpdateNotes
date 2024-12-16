@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -18,8 +19,6 @@ namespace RustUpdateNotes.SkinClass
     public static class Skin
     {
         private static HashSet<string> storedSkins = new HashSet<string>();
-
-        private static HttpClient httpClient = new HttpClient();
 
         private static readonly string skinApiUrl = "https://store.steampowered.com/itemstore/252490/browse/?filter=Limited";
 
@@ -39,112 +38,130 @@ namespace RustUpdateNotes.SkinClass
             }
         }
 
+       
+
+        private static readonly List<string> userAgents = new List<string>
+    {
+      "Mozilla/5.0 (Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.2903.63",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14.7; rv:128.0) Gecko/20100101 Firefox/128.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14.7; rv:132.0) Gecko/20100101 Firefox/132.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.2903.63",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0",
+    "Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0",
+    "Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0",
+    "Mozilla/5.0 (X11; Linux i686; rv:128.0) Gecko/20100101 Firefox/128.0",
+    "Mozilla/5.0 (X11; Linux i686; rv:132.0) Gecko/20100101 Firefox/132.0",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0",
+    "Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:128.0) Gecko/20100101 Firefox/128.0",
+    "Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:132.0) Gecko/20100101 Firefox/132.0",
+    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0",
+    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0"
+    };
+
+        private static int proxyIndex = 0;
+        private static int agentIndex = 0;
+       
+        private static string GetNextHeader()
+        {
+            var agent = userAgents[agentIndex];
+            agentIndex = (agentIndex + 1) % userAgents.Count;
+            return agent;
+        }
+
         public static async Task CheckSkin()
         {
             try
             {
+
                 var cancellationTokenSource = new CancellationTokenSource();
                 cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(90));
 
-                var response_main = await httpClient.GetAsync(skinApiUrl, cancellationTokenSource.Token);
-                if (!response_main.IsSuccessStatusCode)
+                var handler = new HttpClientHandler
                 {
-                    Logger.LogMessage($"response_main null.");
-                    await Logger.DiscordMessage($"response_main null.", true);
-                    return;
-                }
+                    UseCookies = true,
+                    CookieContainer = new CookieContainer()
+                };
 
-                var response = await response_main.Content.ReadAsStringAsync();
-                if (string.IsNullOrEmpty(response))
+                using (var httpClient = new HttpClient(handler))
                 {
-                    Logger.LogMessage($"response null.");
-                    await Logger.DiscordMessage($"response null.", true);
-                    return;
-                }
-
-                List<SkinItem> skinData = ParseSkins(response);
-                if (skinData == null || skinData.Count == 0)
-                {
-                    Logger.LogMessage($"skinData null. (Skinler güncelleniyor olabilir.)");
-                    await Logger.DiscordMessage($"skinData null. (Skinler güncelleniyor olabilir.)");
-                    return;
-                }
-
-                var newSkins = skinData.Select(Skin => Skin.Name).ToList();
-
-                foreach (var item in skinData)
-                {
-                    Logger.LogMessage($"{item.Name} | {item.Price} | {item.Image.Substring(0, Math.Min(30, item.Image.Length))}");
-                }
-
-                if (storedSkins.Count == 0)
-                {
-                    storedSkins.UnionWith(newSkins);
-                    return;
-                }
-
-                var differences = skinData.Where(Skin => newSkins.Contains(Skin.Name) && !storedSkins.Contains(Skin.Name)).ToList();
-                if (differences.Any())
-                {
-                    var ourimage = CreateBigImage(skinData);
-                    ourimage.Save("skinimage.png", System.Drawing.Imaging.ImageFormat.Png);
-                    if (ourimage == null)
+                    httpClient.DefaultRequestHeaders.Accept.ParseAdd("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+                    httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en-US,en;q=0.5");
+                    httpClient.DefaultRequestHeaders.Referrer = new Uri("https://www.google.com/");
+                    httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(GetNextHeader());
+                    handler.CookieContainer.Add(new Uri("https://www.google.com"), new Cookie("session", "Mavi"));
+                    var response_main = await httpClient.GetAsync(skinApiUrl, cancellationTokenSource.Token);
+                    if (!response_main.IsSuccessStatusCode)
                     {
-                        Logger.LogMessage($"ourimage null.");
-                        await Logger.DiscordMessage($"ourimage null.", true);
+                        Logger.LogMessage($"response_main null.");
+                        await Logger.DiscordMessage($"response_main null.", true);
                         return;
                     }
 
-                    var skincount = skinData.Count;
-                    float totalcost = 0;
-                    foreach (var skin in skinData)
+                    var response = await response_main.Content.ReadAsStringAsync();
+                    if (string.IsNullOrEmpty(response))
                     {
-                        float price = float.Parse(skin.Price.Replace("$", ""), CultureInfo.InvariantCulture);
-                        totalcost += price;
-                    }
-                    Logger.LogMessage($"Mağaza Yenilendi --> {skincount} yeni kostüm. Toplam Kostüm Değeri: {totalcost}$");
-
-                    EmbedBuilder embedBuildformain = new EmbedBuilder()
-                    .WithTitle(":bell: MAĞAZA YENİLENDİ! | " + DateTime.Now.ToShortDateString() + " :bell:")
-                    .WithColor(Discord.Color.Blue)
-                    .WithDescription($"**{skincount}** yeni kostüm mağazaye eklendi.\n\n Toplam Kostüm Değeri: **{totalcost}$**")
-                    .WithUrl("https://store.steampowered.com/itemstore/252490/");
-
-                    var guildlist = Global.StoreCheckerChannels.Keys.ToList();
-                    foreach (var guildId in guildlist)
-                    {
-                        var guild = Global.Client.GetGuild(guildId);
-                        if (guild == null)
-                        {
-                            continue;
-                        }
-                        var channelIds = Global.StoreCheckerChannels[guildId].ToList();
-                        foreach (var channelId in channelIds)
-                        {
-                            var channel = guild.GetTextChannel(channelId);
-                            if (channel == null)
-                            {
-                                continue;
-                            }
-                            if (!await Logger.CheckBotPerms(guild) || !await Logger.CheckChannelPerms(channel))
-                            {
-                                Logger.LogMessage($"Mağaza Kanalı Yetki Yetersizliği | Guild: {guild.Name}");
-                                continue;
-                            };
-                            await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
-                        }
+                        Logger.LogMessage($"response null.");
+                        await Logger.DiscordMessage($"response null.", true);
+                        return;
                     }
 
-                    using (var fileStream = new FileStream("skinimage.png", FileMode.Open))
+                    List<SkinItem> skinData = ParseSkins(response);
+                    if (skinData == null || skinData.Count == 0)
                     {
-                        byte[] imageData;
-                        using (var memoryStream = new MemoryStream())
+                        Logger.LogMessage($"skinData null. (Skinler güncelleniyor olabilir.)");
+                        await Logger.DiscordMessage($"skinData null. (Skinler güncelleniyor olabilir.)");
+                        return;
+                    }
+
+                    var newSkins = skinData.Select(Skin => Skin.Name).ToList();
+                    
+                    foreach (var item in skinData)
+                    {
+                        var pricetx = Convert.ToDouble(item.Price);
+                        Logger.LogMessage($"{item.Name} | {pricetx.ToString("N2")} TL | {item.Image}");
+                    }
+
+                    if (storedSkins.Count == 0)
+                    {
+                        storedSkins.UnionWith(newSkins);
+                        return;
+                    }
+
+                    var differences = skinData.Where(Skin => newSkins.Contains(Skin.Name) && !storedSkins.Contains(Skin.Name)).ToList();
+                    if (differences.Any())
+                    {
+                        var ourimage = CreateBigImage(skinData);
+                        ourimage.Save("skinimage.png", System.Drawing.Imaging.ImageFormat.Png);
+                        if (ourimage == null)
                         {
-                            fileStream.CopyTo(memoryStream);
-                            imageData = memoryStream.ToArray();
+                            Logger.LogMessage($"ourimage null.");
+                            await Logger.DiscordMessage($"ourimage null.", true);
+                            return;
                         }
-                        var guidlist = Global.StoreCheckerChannels.Keys.ToList();
-                        foreach (var guildId in guidlist)
+
+                        var skincount = skinData.Count;
+                        float totalcost = 0;
+                        foreach (var skin in skinData)
+                        {
+                            float price = float.Parse(skin.Price.Replace("$", ""), CultureInfo.InvariantCulture);
+                            totalcost += price;
+                        }
+                        Logger.LogMessage($"Mağaza Yenilendi --> {skincount} yeni kostüm. Toplam Kostüm Değeri: {totalcost}");
+
+                        EmbedBuilder embedBuildformain = new EmbedBuilder()
+                        .WithTitle(":bell: MAĞAZA YENİLENDİ! | " + DateTime.Now.ToShortDateString() + " :bell:")
+                        .WithColor(Discord.Color.Blue)
+                        .WithDescription($"**{skincount}** yeni kostüm mağazaye eklendi.\n\n Toplam Kostüm Değeri: **₺{totalcost.ToString("N2")}**\n\nKur 35TL olarak sabit alınmıştır, küçük farklar olabilir.")
+                        .WithUrl("https://store.steampowered.com/itemstore/252490/");
+
+                        var guildlist = Global.StoreCheckerChannels.Keys.ToList();
+                        foreach (var guildId in guildlist)
                         {
                             var guild = Global.Client.GetGuild(guildId);
                             if (guild == null)
@@ -159,21 +176,55 @@ namespace RustUpdateNotes.SkinClass
                                 {
                                     continue;
                                 }
-                                using (var memoryStream = new MemoryStream(imageData))
+                                if (!await Logger.CheckBotPerms(guild) || !await Logger.CheckChannelPerms(channel))
                                 {
-                                    if (!await Logger.CheckBotPerms(guild) || !await Logger.CheckChannelPerms(channel))
+                                    Logger.LogMessage($"Mağaza Kanalı Yetki Yetersizliği | Guild: {guild.Name}");
+                                    continue;
+                                };
+                                await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
+                            }
+                        }
+
+                        using (var fileStream = new FileStream("skinimage.png", FileMode.Open))
+                        {
+                            byte[] imageData;
+                            using (var memoryStream = new MemoryStream())
+                            {
+                                fileStream.CopyTo(memoryStream);
+                                imageData = memoryStream.ToArray();
+                            }
+                            var guidlist = Global.StoreCheckerChannels.Keys.ToList();
+                            foreach (var guildId in guidlist)
+                            {
+                                var guild = Global.Client.GetGuild(guildId);
+                                if (guild == null)
+                                {
+                                    continue;
+                                }
+                                var channelIds = Global.StoreCheckerChannels[guildId].ToList();
+                                foreach (var channelId in channelIds)
+                                {
+                                    var channel = guild.GetTextChannel(channelId);
+                                    if (channel == null)
                                     {
-                                        Logger.LogMessage($"Mağaza Kanalı Yetki Yetersizliği (Resim) | Guild: {guild.Name}");
                                         continue;
-                                    };
-                                    await channel.SendFileAsync(memoryStream, "skinimage.png");
+                                    }
+                                    using (var memoryStream = new MemoryStream(imageData))
+                                    {
+                                        if (!await Logger.CheckBotPerms(guild) || !await Logger.CheckChannelPerms(channel))
+                                        {
+                                            Logger.LogMessage($"Mağaza Kanalı Yetki Yetersizliği (Resim) | Guild: {guild.Name}");
+                                            continue;
+                                        };
+                                        await channel.SendFileAsync(memoryStream, "skinimage.png");
+                                    }
                                 }
                             }
                         }
+                        File.Delete("skinimage.png");
+                        storedSkins.Clear();
+                        storedSkins.UnionWith(newSkins);
                     }
-                    File.Delete("skinimage.png");
-                    storedSkins.Clear();
-                    storedSkins.UnionWith(newSkins);
                 }
             }
             catch (ArgumentException)
@@ -223,8 +274,9 @@ namespace RustUpdateNotes.SkinClass
 
                             g.DrawImage(img, x * 400, y * 400, 350, 350);
 
+                            var tprice = Convert.ToDouble(skinPrices[index]);
                             var skinname = skinNames[index];
-                            var skinprice = skinPrices[index];
+                            var skinprice = "₺" + tprice.ToString("N2");
 
                             if (index < imageUrls.Count)
                             {
@@ -288,7 +340,16 @@ namespace RustUpdateNotes.SkinClass
                 }
                 if (priceNode != null)
                 {
-                    skinItem.Price = priceNode.InnerText.Trim();
+                    var st1_price = priceNode.InnerText.Trim();
+                    st1_price = Regex.Replace(st1_price, @"[^0-9,.]", "");
+                    if (decimal.TryParse(st1_price, out decimal price))
+                    {
+                        skinItem.Price = ((price * 35)/100).ToString();
+                    }
+                    else
+                    {
+                        skinItem.Price = "0";
+                    }
                 }
                 if (itemImageNode != null)
                 {
