@@ -63,7 +63,7 @@ namespace RustUpdateNotes.UpdateClass
 
         private static async Task CheckAndUpdateVersion(string MainL, string ServerL)
         {
-            await UpdateVersionIfNeeded(MainL, Main, ":radioactive: **Oyuncular için yeni bir Güncelleme geldi!** :radioactive:", "Güncellemeyi görmüyorsanız, steaminizi yeniden başlatmanız gerekiyor.", true, v => Main = v);
+            await UpdateVersionIfNeeded(MainL, Main, ":radioactive: **Oyuncular için yeni bir Güncelleme geldi!** :radioactive:", "Güncellemeyi görmüyorsanız, steaminizi yeniden başlatmayı ve dosya doğrulamayı deneyebilirsiniz.", true, v => Main = v);
             await UpdateVersionIfNeeded(ServerL, Server, ":radioactive: **Sunucular için yeni bir Güncelleme geldi!** :radioactive:", "Sunucu sahipleri, sunucularını güncelleyebilirler.", true, v => Server = v);
         }
 

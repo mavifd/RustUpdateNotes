@@ -9,6 +9,7 @@ using RustUpdateNotes.ResponderClass;
 using RustUpdateNotes.SkinClass;
 using RustUpdateNotes.UpdateClass;
 using System;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -18,9 +19,28 @@ namespace RustUpdateNotes
     {
         private static void Main() => new Program().MainAsync().GetAwaiter().GetResult();
 
+        private async Task MonitorTask(Func<Task> taskFunction)
+        {
+            while (true)
+            {
+                try
+                {
+                    await taskFunction();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogMessage($"Fonksiyon Hatası: {taskFunction.Method.Name}, yeniden başlatılıyor... Hata: {ex.Message}");
+                    await Logger.DiscordMessage($"Fonksiyon Hatası: {taskFunction.Method.Name}, yeniden başlatılıyor... Hata: {ex.Message}");
+                    await Task.Delay(5000);
+                }
+            }
+        }
+
         public async Task MainAsync()
         {
             Console.Title = "Rust Update Notes";
+
+            Console.OutputEncoding = Encoding.UTF8;
 
             Logger.LogMessage("Connecting to Discord...");
 
@@ -41,12 +61,12 @@ namespace RustUpdateNotes
 
             Logger.LogMessage("Starting Tasks...");
 
-            _ = Task.Run(Channel.Channel_Runner);
-            _ = Task.Run(Commit.Commit_Runner);
-            _ = Task.Run(Skin.Skin_Runner);
-            _ = Task.Run(Update.Update_Runner);
-            _ = Task.Run(Responder.Responder_Runner);
-            _ = Task.Run(Logger.AppLog_Runner);
+            _ = MonitorTask(() => Channel.Channel_Runner());
+            _ = MonitorTask(() => Commit.Commit_Runner());
+            _ = MonitorTask(() => Skin.Skin_Runner());
+            _ = MonitorTask(() => Update.Update_Runner());
+            _ = MonitorTask(() => Responder.Responder_Runner());
+            _ = MonitorTask(() => Logger.AppLog_Runner());
 
             Logger.LogMessage("All done!");
 

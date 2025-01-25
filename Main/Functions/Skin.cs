@@ -10,7 +10,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -38,8 +37,6 @@ namespace RustUpdateNotes.SkinClass
             }
         }
 
-       
-
         private static readonly List<string> userAgents = new List<string>
     {
       "Mozilla/5.0 (Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0",
@@ -64,9 +61,8 @@ namespace RustUpdateNotes.SkinClass
     "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0"
     };
 
-        private static int proxyIndex = 0;
         private static int agentIndex = 0;
-       
+
         private static string GetNextHeader()
         {
             var agent = userAgents[agentIndex];
@@ -78,7 +74,6 @@ namespace RustUpdateNotes.SkinClass
         {
             try
             {
-
                 var cancellationTokenSource = new CancellationTokenSource();
                 cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(90));
 
@@ -120,12 +115,18 @@ namespace RustUpdateNotes.SkinClass
                     }
 
                     var newSkins = skinData.Select(Skin => Skin.Name).ToList();
-                    
+
+                    double totalcostgenel = 0;
                     foreach (var item in skinData)
                     {
-                        var pricetx = Convert.ToDouble(item.Price);
-                        Logger.LogMessage($"{item.Name} | {pricetx.ToString("N2")} TL | {item.Image}");
+                        double price = Convert.ToDouble(item.Price.Replace("€", ""));
+                        int link_show_lengt = 20;
+                        string shorted_image = item.Image.Length >= link_show_lengt ? item.Image.Substring(item.Image.Length - link_show_lengt) : item.Image.PadLeft(link_show_lengt, '*');
+                        Logger.LogMessage($"{item.Name} | {price.ToString("N2")}€ | {shorted_image}");
+                        totalcostgenel += price;
                     }
+
+                    Logger.LogMessage($"Toplam: {totalcostgenel.ToString("N2")}€");
 
                     if (storedSkins.Count == 0)
                     {
@@ -146,10 +147,10 @@ namespace RustUpdateNotes.SkinClass
                         }
 
                         var skincount = skinData.Count;
-                        float totalcost = 0;
+                        double totalcost = 0;
                         foreach (var skin in skinData)
                         {
-                            float price = float.Parse(skin.Price.Replace("$", ""), CultureInfo.InvariantCulture);
+                            double price = double.Parse(skin.Price.Replace("€", ""), CultureInfo.InvariantCulture);
                             totalcost += price;
                         }
                         Logger.LogMessage($"Mağaza Yenilendi --> {skincount} yeni kostüm. Toplam Kostüm Değeri: {totalcost}");
@@ -157,7 +158,7 @@ namespace RustUpdateNotes.SkinClass
                         EmbedBuilder embedBuildformain = new EmbedBuilder()
                         .WithTitle(":bell: MAĞAZA YENİLENDİ! | " + DateTime.Now.ToShortDateString() + " :bell:")
                         .WithColor(Discord.Color.Blue)
-                        .WithDescription($"**{skincount}** yeni kostüm mağazaye eklendi.\n\n Toplam Kostüm Değeri: **₺{totalcost.ToString("N2")}**\n\nKur 35TL olarak sabit alınmıştır, küçük farklar olabilir.")
+                        .WithDescription($"**{skincount}** yeni kostüm mağazaya eklendi.\n\n Toplam Kostüm Değeri: **₺{totalcost.ToString("N2")}**")
                         .WithUrl("https://store.steampowered.com/itemstore/252490/");
 
                         var guildlist = Global.StoreCheckerChannels.Keys.ToList();
@@ -274,9 +275,8 @@ namespace RustUpdateNotes.SkinClass
 
                             g.DrawImage(img, x * 400, y * 400, 350, 350);
 
-                            var tprice = Convert.ToDouble(skinPrices[index]);
                             var skinname = skinNames[index];
-                            var skinprice = "₺" + tprice.ToString("N2");
+                            var skinprice = skinPrices[index];
 
                             if (index < imageUrls.Count)
                             {
@@ -340,16 +340,7 @@ namespace RustUpdateNotes.SkinClass
                 }
                 if (priceNode != null)
                 {
-                    var st1_price = priceNode.InnerText.Trim();
-                    st1_price = Regex.Replace(st1_price, @"[^0-9,.]", "");
-                    if (decimal.TryParse(st1_price, out decimal price))
-                    {
-                        skinItem.Price = ((price * 35)/100).ToString();
-                    }
-                    else
-                    {
-                        skinItem.Price = "0";
-                    }
+                    skinItem.Price = priceNode.InnerText.Trim();
                 }
                 if (itemImageNode != null)
                 {

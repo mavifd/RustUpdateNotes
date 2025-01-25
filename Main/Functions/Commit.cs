@@ -85,10 +85,18 @@ namespace RustUpdateNotes.CommitClass
 
                 foreach (var commit in differences)
                 {
-                    Color commitcolor = Color.Blue;
-                    if (commit.Message.IndexOf("merge", StringComparison.OrdinalIgnoreCase) >= 0)
+                    Color commitcolor = Color.Blue; //merge into
+                    if (commit.Message.IndexOf("merge", StringComparison.OrdinalIgnoreCase) >= 0 && commit.Message.IndexOf("into", StringComparison.OrdinalIgnoreCase) >= 0)
                     {
                         commitcolor = Color.Green;
+                    } //merge from
+                    else if (commit.Message.IndexOf("merge", StringComparison.OrdinalIgnoreCase) >= 0 && commit.Message.IndexOf("from", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        commitcolor = Color.Green;
+                    } //only merge
+                    else if (commit.Message.IndexOf("merge", StringComparison.OrdinalIgnoreCase) >= 0 && (commit.Message.IndexOf("into", StringComparison.OrdinalIgnoreCase) == 0 || commit.Message.IndexOf("from", StringComparison.OrdinalIgnoreCase) == 0))
+                    {
+                        commitcolor = Color.DarkPurple;
                     }
 
                     Logger.LogMessage($"New Commit: {commit.Changeset}");
