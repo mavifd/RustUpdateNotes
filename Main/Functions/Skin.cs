@@ -5,7 +5,6 @@ using RustUpdateNotes.LoggerClass;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -122,11 +121,10 @@ namespace RustUpdateNotes.SkinClass
                         double price = Convert.ToDouble(item.Price.Replace("€", ""));
                         int link_show_lengt = 20;
                         string shorted_image = item.Image.Length >= link_show_lengt ? item.Image.Substring(item.Image.Length - link_show_lengt) : item.Image.PadLeft(link_show_lengt, '*');
-                        Logger.LogMessage($"{item.Name} | {price.ToString("N2")}€ | {shorted_image}");
+                        Logger.LogMessage($"{item.Name} | €{price.ToString("N2")} | {shorted_image}");
                         totalcostgenel += price;
                     }
-
-                    Logger.LogMessage($"Toplam: {totalcostgenel.ToString("N2")}€");
+                    Logger.LogMessage($"Toplam: €{totalcostgenel.ToString("N2")}");
 
                     if (storedSkins.Count == 0)
                     {
@@ -147,18 +145,12 @@ namespace RustUpdateNotes.SkinClass
                         }
 
                         var skincount = skinData.Count;
-                        double totalcost = 0;
-                        foreach (var skin in skinData)
-                        {
-                            double price = double.Parse(skin.Price.Replace("€", ""), CultureInfo.InvariantCulture);
-                            totalcost += price;
-                        }
-                        Logger.LogMessage($"Mağaza Yenilendi --> {skincount} yeni kostüm. Toplam Kostüm Değeri: {totalcost}");
+                        Logger.LogMessage($"Mağaza Yenilendi --> {skincount} yeni kostüm. Toplam Kostüm Değeri: €{totalcostgenel.ToString("N2")}");
 
                         EmbedBuilder embedBuildformain = new EmbedBuilder()
                         .WithTitle(":bell: MAĞAZA YENİLENDİ! | " + DateTime.Now.ToShortDateString() + " :bell:")
                         .WithColor(Discord.Color.Blue)
-                        .WithDescription($"**{skincount}** yeni kostüm mağazaya eklendi.\n\n Toplam Kostüm Değeri: **₺{totalcost.ToString("N2")}**")
+                        .WithDescription($"**{skincount}** yeni kostüm mağazaya eklendi.\n\n Toplam Kostüm Değeri: **€{totalcostgenel.ToString("N2")}**")
                         .WithUrl("https://store.steampowered.com/itemstore/252490/");
 
                         var guildlist = Global.StoreCheckerChannels.Keys.ToList();
