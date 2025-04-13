@@ -100,14 +100,29 @@ namespace RustUpdateNotes.CommitClass
                     }
 
                     Logger.LogMessage($"New Commit: {commit.Changeset}");
+
                     var commitlink = "https://commits.facepunch.com/" + commit.Id;
                     EmbedBuilder newEmbedBuilder = new EmbedBuilder()
-                    .WithAuthor(commit.User.Name, commit.User.Avatar)
                     .WithTitle(commit.Branch)
                     .WithDescription(commit.Message)
                     .WithUrl(commitlink)
                     .WithColor(commitcolor)
                     .WithFooter($"Change: {commit.Changeset} ({commit.Id}) • {commit.Created.AddHours(3):dd/MM HH:mm}");
+
+                    string authorName = commit.User.Name;
+                    string authorAvatar = commit.User.Avatar;
+
+                    if (!string.IsNullOrWhiteSpace(authorAvatar) &&
+                        Uri.TryCreate(authorAvatar, UriKind.Absolute, out var avatarUri) &&
+                        (avatarUri.Scheme == Uri.UriSchemeHttp || avatarUri.Scheme == Uri.UriSchemeHttps))
+                    {
+                        newEmbedBuilder.WithAuthor(authorName, authorAvatar);
+                    }
+                    else
+                    {
+                        newEmbedBuilder.WithAuthor(authorName);
+                    }
+
                     var guildlist = Global.CommitFollowerChannels.Keys.ToList();
                     foreach (var guildId in guildlist)
                     {
@@ -128,7 +143,8 @@ namespace RustUpdateNotes.CommitClass
                             {
                                 Logger.LogMessage($"Commit Yetki Yetersizliği | Guild: {guild.Name}");
                                 continue;
-                            };
+                            }
+                            ;
                             await channel.SendMessageAsync("", false, newEmbedBuilder.Build());
                         }
                     }

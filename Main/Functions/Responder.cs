@@ -94,7 +94,8 @@ namespace RustUpdateNotes.ResponderClass
                         {
                             Logger.LogMessage($"Güncelleme Tarihi Yetki Yetersizliği | Guild: {guild.Name}");
                             continue;
-                        };
+                        }
+                        ;
                         var messages = await channel.GetMessagesAsync(limit: 1).FlattenAsync();
                         var lastMessage = messages.FirstOrDefault() is IUserMessage userMessage ? userMessage : null;
                         if (lastMessage != null && lastMessage.Author.Id == Global.Client.CurrentUser.Id)

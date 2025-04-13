@@ -1,0 +1,48 @@
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\Rust Update Notes.exe.config
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\Rust Update Notes.exe
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\Discord.Net.Commands.dll
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\Discord.Net.Core.dll
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\Discord.Net.Interactions.dll
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\Discord.Net.Rest.dll
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\Discord.Net.Webhook.dll
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\Discord.Net.WebSocket.dll
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\HtmlAgilityPack.dll
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\Microsoft.Bcl.AsyncInterfaces.dll
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\Newtonsoft.Json.dll
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\System.Buffers.dll
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\System.Collections.Immutable.dll
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\System.Interactive.Async.dll
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\System.Linq.Async.dll
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\System.Memory.dll
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\System.Numerics.Vectors.dll
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\System.Reactive.dll
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\System.Runtime.CompilerServices.Unsafe.dll
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\System.Threading.Tasks.Extensions.dll
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\System.ValueTuple.dll
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\Discord.Net.Commands.xml
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\Discord.Net.Core.xml
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\Discord.Net.Interactions.xml
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\Discord.Net.Rest.xml
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\Discord.Net.Webhook.xml
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\Discord.Net.WebSocket.xml
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\HtmlAgilityPack.pdb
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\HtmlAgilityPack.xml
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\Microsoft.Bcl.AsyncInterfaces.xml
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\Microsoft.Extensions.DependencyInjection.Abstractions.xml
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\Newtonsoft.Json.xml
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\System.Buffers.xml
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\System.Collections.Immutable.xml
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\System.Interactive.Async.xml
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\System.Linq.Async.xml
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\System.Memory.xml
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\System.Numerics.Vectors.xml
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\System.Reactive.xml
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\System.Runtime.CompilerServices.Unsafe.xml
+C:\Users\mavif\Desktop\RustUpdateNotes\bin\Release\System.Threading.Tasks.Extensions.xml
+C:\Users\mavif\Desktop\RustUpdateNotes\obj\Release\Rust Update Notes.csproj.AssemblyReference.cache
+C:\Users\mavif\Desktop\RustUpdateNotes\obj\Release\RustUpdateNotes.Properties.Resources.resources
+C:\Users\mavif\Desktop\RustUpdateNotes\obj\Release\Rust Update Notes.csproj.GenerateResource.cache
+C:\Users\mavif\Desktop\RustUpdateNotes\obj\Release\Rust Update Notes.csproj.CoreCompileInputs.cache
+C:\Users\mavif\Desktop\RustUpdateNotes\obj\Release\Rust Upd.5C2767D8.Up2Date
+C:\Users\mavif\Desktop\RustUpdateNotes\obj\Release\Rust Update Notes.exe

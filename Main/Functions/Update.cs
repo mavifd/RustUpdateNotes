@@ -106,7 +106,8 @@ namespace RustUpdateNotes.UpdateClass
                     {
                         Logger.LogMessage($"Güncelleme Takip Yetki Yetersizliği| Guild: {guild.Name}");
                         continue;
-                    };
+                    }
+                    ;
                     await channel.SendMessageAsync("@everyone", false, embedBuilder.Build());
                 }
             }

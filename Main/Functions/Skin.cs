@@ -173,7 +173,8 @@ namespace RustUpdateNotes.SkinClass
                                 {
                                     Logger.LogMessage($"Mağaza Kanalı Yetki Yetersizliği | Guild: {guild.Name}");
                                     continue;
-                                };
+                                }
+                                ;
                                 await channel.SendMessageAsync("@everyone", false, embedBuildformain.Build());
                             }
                         }
@@ -208,7 +209,8 @@ namespace RustUpdateNotes.SkinClass
                                         {
                                             Logger.LogMessage($"Mağaza Kanalı Yetki Yetersizliği (Resim) | Guild: {guild.Name}");
                                             continue;
-                                        };
+                                        }
+                                        ;
                                         await channel.SendFileAsync(memoryStream, "skinimage.png");
                                     }
                                 }
