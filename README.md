@@ -27,7 +27,7 @@ Rust için güncelleme, wipe tarihi, mağaza ve commit takibi yapan bir Discord 
 
 ## Yapılandırma
 
-`/home/runner/work/RustUpdateNotes/RustUpdateNotes/Main/Helpers/Global.cs` dosyasındaki değerleri kendi ortamınıza göre düzenleyin:
+`Main/Helpers/Global.cs` dosyasındaki değerleri kendi ortamınıza göre düzenleyin:
 
 - `Token`
 - `DiscordLog` webhook
